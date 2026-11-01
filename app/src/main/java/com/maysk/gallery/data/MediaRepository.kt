@@ -15,6 +15,59 @@ object MediaRepository {
         return result
     }
 
+    /** Элементы, помещённые в системную корзину Android 11+. */
+    fun loadTrashed(context: Context): List<MediaItem> {
+        if (android.os.Build.VERSION.SDK_INT < 30) return emptyList()
+        val result = ArrayList<MediaItem>()
+        result += queryTrashed(context, isVideo = false)
+        result += queryTrashed(context, isVideo = true)
+        return result.sortedByDescending { it.dateMillis }
+    }
+
+    private fun queryTrashed(context: Context, isVideo: Boolean): List<MediaItem> {
+        if (android.os.Build.VERSION.SDK_INT < 30) return emptyList()
+        val base = if (isVideo) MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+        else MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+        val projection = arrayOf(
+            MediaStore.MediaColumns._ID,
+            MediaStore.MediaColumns.DISPLAY_NAME,
+            MediaStore.MediaColumns.MIME_TYPE,
+            MediaStore.MediaColumns.DATE_ADDED,
+            MediaStore.MediaColumns.BUCKET_DISPLAY_NAME,
+            MediaStore.MediaColumns.DATE_EXPIRES,
+        )
+        val out = ArrayList<MediaItem>()
+        try {
+            context.contentResolver.query(
+                base, projection,
+                "${MediaStore.MediaColumns.IS_TRASHED}=1", null,
+                "${MediaStore.MediaColumns.DATE_ADDED} DESC",
+            )?.use { c ->
+                val id = c.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
+                val name = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
+                val mime = c.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)
+                val added = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_ADDED)
+                val bucket = c.getColumnIndexOrThrow(MediaStore.MediaColumns.BUCKET_DISPLAY_NAME)
+                val expires = c.getColumnIndex(MediaStore.MediaColumns.DATE_EXPIRES)
+                while (c.moveToNext()) {
+                    val mediaId = c.getLong(id)
+                    out += MediaItem(
+                        id = mediaId,
+                        uri = ContentUris.withAppendedId(base, mediaId),
+                        isVideo = isVideo,
+                        name = c.getString(name) ?: "",
+                        mime = c.getString(mime) ?: if (isVideo) "video/*" else "image/*",
+                        dateMillis = c.getLong(added) * 1000L,
+                        bucket = c.getString(bucket) ?: "Корзина",
+                        durationMs = 0L,
+                        trashExpiresMillis = if (expires >= 0 && !c.isNull(expires)) c.getLong(expires) * 1000L else null,
+                    )
+                }
+            }
+        } catch (_: Exception) { }
+        return out
+    }
+
     private fun query(context: Context, isVideo: Boolean): List<MediaItem> {
         val base = if (isVideo) MediaStore.Video.Media.EXTERNAL_CONTENT_URI
         else MediaStore.Images.Media.EXTERNAL_CONTENT_URI
