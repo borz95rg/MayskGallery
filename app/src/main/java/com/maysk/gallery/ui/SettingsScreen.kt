@@ -132,8 +132,7 @@ fun SettingsScreen(vm: MainViewModel, s: UiSettings) {
         }
 
         SettingsGroup("УДОБСТВО", "Навигация и анимация") {
-            SettingsLabel("Положение панели навигации", "Выбери, где удобнее переключать разделы")
-            ChipRow(listOf(false, true), s.navTop, { if (it) "Сверху" else "Снизу" }) { vm.set(Keys.NAV_TOP, it) }
+            SettingsLabel("Основная навигация", "Оригинальная нижняя панель Фото · Альбомы · Видео сохраняется во всех темах")
             SettingsLabel("Анимация появления")
             ChipRow(AnimStyle.values().toList(), s.animation, { it.title }) { vm.set(Keys.ANIM, it.name) }
             SettingsSlider("Размер текста", "${(s.fontScale * 100).toInt()}%", s.fontScale, .8f..1.4f) { vm.set(Keys.FONT, it) }

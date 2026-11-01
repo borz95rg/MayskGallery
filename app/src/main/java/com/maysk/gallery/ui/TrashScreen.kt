@@ -75,8 +75,12 @@ fun TrashScreen(s: UiSettings, onOpen: (List<MediaItem>, Int) -> Unit) {
                             }) { Text("Вернуть") }
                             TextButton(onClick = { pending = item }) { Text("Удалить") }
                         }
+                        val remaining = item.expiresAtMillis - System.currentTimeMillis()
+                        val remainingText = if (item.expiresAtMillis <= 0L) "Срок хранения задаёт Android"
+                            else if (remaining <= 0L) "Скоро будет удалено системой"
+                            else "Осталось: ${remaining / 86_400_000L} дн. ${(remaining % 86_400_000L) / 3_600_000L} ч."
                         Text(
-                            "Срок хранения контролирует Android",
+                            remainingText,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.labelSmall,
                         )

@@ -38,6 +38,7 @@ object MediaRepository {
             add(MediaStore.MediaColumns.BUCKET_DISPLAY_NAME)
             add(if (isVideo) MediaStore.Video.Media.DATE_TAKEN else MediaStore.Images.Media.DATE_TAKEN)
             if (isVideo) add(MediaStore.Video.Media.DURATION)
+            if (trashedOnly && android.os.Build.VERSION.SDK_INT >= 30) add(MediaStore.MediaColumns.DATE_EXPIRES)
         }.toTypedArray()
 
         val out = ArrayList<MediaItem>()
@@ -54,6 +55,8 @@ object MediaRepository {
                     if (isVideo) MediaStore.Video.Media.DATE_TAKEN else MediaStore.Images.Media.DATE_TAKEN
                 )
                 val iDur = if (isVideo) c.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION) else -1
+                val iExpires = if (trashedOnly && android.os.Build.VERSION.SDK_INT >= 30)
+                    c.getColumnIndex(MediaStore.MediaColumns.DATE_EXPIRES) else -1
 
                 while (c.moveToNext()) {
                     val id = c.getLong(iId)
@@ -68,6 +71,7 @@ object MediaRepository {
                         dateMillis = date,
                         bucket = c.getString(iBucket)?.takeIf { it.isNotBlank() } ?: "Без альбома",
                         durationMs = if (iDur >= 0) c.getLong(iDur) else 0L,
+                        expiresAtMillis = if (iExpires >= 0 && !c.isNull(iExpires)) c.getLong(iExpires) * 1000L else 0L,
                     )
                 }
             }

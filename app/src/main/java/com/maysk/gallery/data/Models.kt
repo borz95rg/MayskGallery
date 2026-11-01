@@ -12,6 +12,8 @@ data class MediaItem(
     val dateMillis: Long,
     val bucket: String,
     val durationMs: Long,
+    /** Unix epoch millis when MediaStore plans to permanently remove a trashed item; 0 if unknown. */
+    val expiresAtMillis: Long = 0L,
 ) {
     /** Уникален среди фото и видео (id у них могут совпадать). */
     val key: String get() = (if (isVideo) "v" else "i") + id
