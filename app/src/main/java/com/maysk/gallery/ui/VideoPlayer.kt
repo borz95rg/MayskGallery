@@ -58,7 +58,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -245,8 +244,8 @@ fun VideoPlayer(item: MediaItem, onClose: () -> Unit) {
                             .padding(start = 16.dp, end = 16.dp, bottom = 20.dp),
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(formatDuration(position), color = Color.White, fontSize = 12.sp)
-                            Text(" / ${formatDuration(duration)}", color = Color.White.copy(.62f), fontSize = 12.sp)
+                            Text(formatPlayerDuration(position), color = Color.White, fontSize = 12.sp)
+                            Text(" / ${formatPlayerDuration(duration)}", color = Color.White.copy(.62f), fontSize = 12.sp)
                             Spacer(Modifier.weight(1f))
                             Text(videoResolution(player), color = Color.White.copy(.75f), fontSize = 11.sp)
                         }
@@ -415,7 +414,7 @@ private fun videoResolution(player: ExoPlayer): String {
     return if (format.width > 0 && format.height > 0) "${format.width}×${format.height}" else "Видео"
 }
 
-private fun formatDuration(ms: Long): String {
+private fun formatPlayerDuration(ms: Long): String {
     val total = (ms / 1000).coerceAtLeast(0)
     return "%02d:%02d".format(total / 60, total % 60)
 }

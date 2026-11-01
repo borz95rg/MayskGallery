@@ -75,11 +75,11 @@ fun TrashScreen(s: UiSettings, onOpen: (List<MediaItem>, Int) -> Unit) {
                             }) { Text("Вернуть") }
                             TextButton(onClick = { pending = item }) { Text("Удалить") }
                         }
-                        val remaining = item.trashExpiresMillis?.minus(System.currentTimeMillis())
-                        if (remaining != null && remaining > 0) {
-                            val days = (remaining / 86_400_000L).toInt()
-                            Text("Осталось примерно $days дн.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+                        Text(
+                            "Срок хранения контролирует Android",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.labelSmall,
+                        )
                     }
                 }
             }

@@ -15,7 +15,17 @@ object MediaRepository {
         return result
     }
 
-    private fun query(context: Context, isVideo: Boolean): List<MediaItem> {
+    /** Элементы системной корзины MediaStore (Android 11+). */
+    fun loadTrashed(context: Context): List<MediaItem> {
+        if (android.os.Build.VERSION.SDK_INT < 30) return emptyList()
+        val result = ArrayList<MediaItem>()
+        result += query(context, isVideo = false, trashedOnly = true)
+        result += query(context, isVideo = true, trashedOnly = true)
+        result.sortByDescending { it.dateMillis }
+        return result
+    }
+
+    private fun query(context: Context, isVideo: Boolean, trashedOnly: Boolean = false): List<MediaItem> {
         val base = if (isVideo) MediaStore.Video.Media.EXTERNAL_CONTENT_URI
         else MediaStore.Images.Media.EXTERNAL_CONTENT_URI
 
@@ -32,7 +42,9 @@ object MediaRepository {
 
         val out = ArrayList<MediaItem>()
         try {
-            context.contentResolver.query(base, projection, null, null, null)?.use { c ->
+            val selection = if (trashedOnly && android.os.Build.VERSION.SDK_INT >= 30)
+                "${MediaStore.MediaColumns.IS_TRASHED} = 1" else null
+            context.contentResolver.query(base, projection, selection, null, null)?.use { c ->
                 val iId = c.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
                 val iName = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
                 val iMime = c.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)
