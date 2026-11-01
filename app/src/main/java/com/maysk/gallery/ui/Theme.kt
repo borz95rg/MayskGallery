@@ -28,7 +28,7 @@ import com.maysk.gallery.data.ThemePreset
 import com.maysk.gallery.data.UiSettings
 
 private fun isDark(s: UiSettings, system: Boolean): Boolean = when (s.preset) {
-    ThemePreset.GLASS, ThemePreset.LUXURY, ThemePreset.NEON -> true
+    ThemePreset.ORIGINAL, ThemePreset.GLASS, ThemePreset.LUXURY, ThemePreset.NEON -> true
     else -> system
 }
 
@@ -36,6 +36,13 @@ private fun isDark(s: UiSettings, system: Boolean): Boolean = when (s.preset) {
 private fun schemeFor(s: UiSettings, dark: Boolean): ColorScheme {
     val ctx = LocalContext.current
     return when (s.preset) {
+        ThemePreset.ORIGINAL -> darkColorScheme(
+            primary = Color(0xFFEDEDED), onPrimary = Color.Black,
+            background = Color.Black, onBackground = Color.White,
+            surface = Color(0xFF121214), onSurface = Color.White,
+            surfaceVariant = Color(0xFF232326), onSurfaceVariant = Color(0xFF9A9AA2),
+        )
+
         ThemePreset.CLASSIC ->
             if (dark) darkColorScheme(
                 primary = Color(0xFF6AA4FF), onPrimary = Color(0xFF00224D),

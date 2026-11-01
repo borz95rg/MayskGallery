@@ -69,6 +69,27 @@ fun SettingsScreen(vm: MainViewModel, s: UiSettings) {
             }
         }
 
+        Section("Мои фото по умолчанию")
+        val pick = rememberCoverPicker(vm)
+        Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                "Выберите картинки из галереи телефона для главного экрана. Пусто — берутся ваши последние фото. На главной их можно менять и долгим нажатием.",
+                color = cs.onSurfaceVariant,
+            )
+            listOf("Главный баннер", "Альбом 1", "Альбом 2", "Альбом 3", "Альбом 4").forEachIndexed { i, title ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "$title: " + if (s.covers[i].isBlank()) "из галереи" else "своё фото",
+                        color = cs.onBackground, modifier = Modifier.weight(1f),
+                    )
+                    androidx.compose.material3.TextButton(onClick = { pick(i) }) { Text("Выбрать") }
+                    if (s.covers[i].isNotBlank()) androidx.compose.material3.TextButton(
+                        onClick = { vm.set(Keys.COVERS[i], "") }
+                    ) { Text("Сброс") }
+                }
+            }
+        }
+
         Section("Тема")
         ChipRow(ThemePreset.values().toList(), s.preset, { it.title }) { vm.set(Keys.PRESET, it.name) }
 
@@ -95,6 +116,12 @@ fun SettingsScreen(vm: MainViewModel, s: UiSettings) {
 
         Section("Размер шрифта: ${(s.fontScale * 100).toInt()}%")
         SliderRow(s.fontScale, 0.8f..1.4f, 0) { vm.set(Keys.FONT, it) }
+
+        Spacer(Modifier.height(16.dp))
+        Button(
+            onClick = { vm.resetLook() },
+            modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
+        ) { Text("Сбросить до оригинала") }
 
         Section("Обновления")
         Column(Modifier.padding(horizontal = 16.dp)) {

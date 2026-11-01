@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.MediaStore
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -13,9 +14,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import com.maysk.gallery.data.ThemePreset
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PhotoLibrary
@@ -91,7 +95,13 @@ private fun RootContent(vm: MainViewModel) {
     val secretItems by vm.secret.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
 
-    var tab by rememberSaveable { mutableIntStateOf(0) }
+    val orig = s.preset == ThemePreset.ORIGINAL
+    // 0 Галерея, 1 Альбомы, 2 AI, 3 Сейф, 4 Настройки, 5 Главная (Original), 6 Видео, 7 Подборка
+    var tab by rememberSaveable { mutableIntStateOf(5) }
+    var filter by remember { mutableStateOf<Pair<String, List<MediaItem>>?>(null) }
+    val pickCover = rememberCoverPicker(vm)
+    LaunchedEffect(orig) { if (!orig && tab >= 5) tab = 0 }
+    BackHandler(enabled = orig && tab != 5) { tab = 5 }
     var openAlbum by rememberSaveable { mutableStateOf<String?>(null) }
     var viewer by remember { mutableStateOf<ViewerState?>(null) }
     var editing by remember { mutableStateOf<MediaItem?>(null) }
@@ -204,10 +214,10 @@ private fun RootContent(vm: MainViewModel) {
 
         Scaffold(
             containerColor = Color.Transparent,
-            topBar = { if (s.navTop) navBar() },
-            bottomBar = { if (!s.navTop) navBar() },
+            topBar = { if (!orig && s.navTop) navBar() },
+            bottomBar = { if (!orig && !s.navTop) navBar() },
         ) { pad ->
-            Box(Modifier.padding(pad).fillMaxSize()) {
+            Box(Modifier.padding(pad).padding(bottom = if (orig) 100.dp else 0.dp).fillMaxSize()) {
                 when {
                     !granted -> PermissionScreen { permLauncher.launch(perms) }
                     !loaded -> Box(Modifier.fillMaxSize(), Alignment.Center) {
@@ -224,10 +234,47 @@ private fun RootContent(vm: MainViewModel) {
                             unlocked = vaultUnlocked,
                             onUnlocked = { vaultUnlocked = true },
                         ) { list, i -> viewer = ViewerState(list, i, secret = true) }
+                        5 -> HomeScreen(
+                            items = items,
+                            secretCount = secretItems.size,
+                            s = s,
+                            onOpen = { list, i -> viewer = ViewerState(list, i) },
+                            onFilter = { t, list -> filter = t to list; tab = 7 },
+                            onTab = { tab = it },
+                            onPick = pickCover,
+                        )
+                        6 -> {
+                            val videos = items.filter { it.isVideo }
+                            Column(Modifier.fillMaxSize()) {
+                                ScreenTitle("видео")
+                                MediaGrid(videos, s, onOpen = { viewer = ViewerState(videos, it) })
+                            }
+                        }
+                        7 -> {
+                            val f = filter
+                            Column(Modifier.fillMaxSize()) {
+                                ScreenTitle(f?.first ?: "") {
+                                    androidx.compose.material3.IconButton(onClick = { tab = 5 }) {
+                                        Icon(
+                                            Icons.AutoMirrored.Filled.ArrowBack, "Назад",
+                                            tint = MaterialTheme.colorScheme.onBackground,
+                                        )
+                                    }
+                                }
+                                MediaGrid(f?.second ?: emptyList(), s, onOpen = { viewer = ViewerState(f?.second ?: emptyList(), it) })
+                            }
+                        }
                         else -> SettingsScreen(vm, s)
                     }
                 }
             }
+        }
+
+        if (orig && viewer == null && editing == null) {
+            OriginalDock(
+                selected = when (tab) { 0 -> 0; 6 -> 2; else -> 1 },
+                modifier = Modifier.align(Alignment.BottomCenter),
+            ) { tab = when (it) { 0 -> 0; 2 -> 6; else -> 5 } }
         }
 
         viewer?.let { v ->

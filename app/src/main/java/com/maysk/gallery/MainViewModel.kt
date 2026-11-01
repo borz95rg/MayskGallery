@@ -114,6 +114,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { repo.set(key, value) }
     }
 
+    fun resetLook() {
+        viewModelScope.launch { repo.resetLook() }
+    }
+
     fun toggleFavorite(item: MediaItem) {
         viewModelScope.launch { repo.toggleFavorite(item.key) }
     }

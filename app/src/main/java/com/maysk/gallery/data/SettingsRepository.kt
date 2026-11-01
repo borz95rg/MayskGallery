@@ -26,6 +26,7 @@ object Keys {
     val FONT = floatPreferencesKey("font")
     val AUTO_UPDATE = booleanPreferencesKey("auto_update")
     val FAVORITES = stringSetPreferencesKey("favorites")
+    val COVERS = List(5) { stringPreferencesKey("cover$it") }
 }
 
 class SettingsRepository(private val context: Context) {
@@ -44,11 +45,21 @@ class SettingsRepository(private val context: Context) {
             fontScale = (p[Keys.FONT] ?: d.fontScale).coerceIn(0.8f, 1.4f),
             autoUpdate = p[Keys.AUTO_UPDATE] ?: d.autoUpdate,
             favorites = p[Keys.FAVORITES] ?: d.favorites,
+            covers = Keys.COVERS.map { p[it] ?: "" },
         )
     }
 
     suspend fun <T> set(key: Preferences.Key<T>, value: T) {
         context.dataStore.edit { it[key] = value }
+    }
+
+    /** «Сбросить до оригинала»: внешний вид и свои картинки; избранное и автообновление остаются. */
+    suspend fun resetLook() {
+        context.dataStore.edit { p ->
+            listOf(Keys.PRESET, Keys.COLUMNS, Keys.CORNER, Keys.GLASS, Keys.SHADOW, Keys.ANIM,
+                Keys.ALBUM_VIEW, Keys.NAV_TOP, Keys.FONT).forEach { p.remove(it) }
+            Keys.COVERS.forEach { p.remove(it) }
+        }
     }
 
     suspend fun toggleFavorite(key: String) {

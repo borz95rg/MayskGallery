@@ -23,6 +23,7 @@ data class AlbumInfo(val name: String, val items: List<MediaItem>) {
 }
 
 enum class ThemePreset(val title: String) {
+    ORIGINAL("Original"),
     CLASSIC("Classic"),
     MODERN("Modern"),
     GLASS("Glass"),
@@ -51,7 +52,7 @@ enum class AlbumView(val title: String) {
 
 /** Все настройки «Конструктора интерфейса». */
 data class UiSettings(
-    val preset: ThemePreset = ThemePreset.GLASS,
+    val preset: ThemePreset = ThemePreset.ORIGINAL,
     val columns: Int = 3,
     val cornerPercent: Int = 40,   // 0..80
     val glassAlpha: Float = 0.75f, // 0.2..1
@@ -62,4 +63,6 @@ data class UiSettings(
     val fontScale: Float = 1f,
     val autoUpdate: Boolean = true,
     val favorites: Set<String> = emptySet(),
+    /** Свои картинки: 0 = баннер, 1..4 = обложки альбомов. Пусто = брать из галереи. */
+    val covers: List<String> = List(5) { "" },
 )
