@@ -378,7 +378,7 @@ private fun CollageFeature(items: List<MediaItem>, s: UiSettings, onBack: () -> 
                 18 -> "Асимметрия"
                 else -> categories[(family + variation) % categories.size]
             }
-            CollageLayoutSpec(id, "${families[family]} · ${listOf("I","II","III","IV","V")[variation-1]}", "${photoCount} фото · авторский макет", category)
+            CollageLayoutSpec(id, "${families[family]} · ${listOf("I","II","III","IV","V")[variation-1]}", "${photoCount} фото · пример композиции", category)
         }
     }
     val visibleLayouts = remember(layouts, selectedCategory) { if (selectedCategory == "Все") layouts else layouts.filter { it.category == selectedCategory } }
@@ -395,14 +395,14 @@ private fun CollageFeature(items: List<MediaItem>, s: UiSettings, onBack: () -> 
                         }
                     }
                 }
-                Text("Выбери количество от 2 до 8 — затем подберём подходящий макет.", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp))
+                Text("После выбора количества увидишь готовые композиции с примерами фотографий. Все действия выполняются на телефоне.", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp))
             }
             1 -> {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp)) {
                     TextButton(onClick = { stage = 0 }) { Text("← Количество") }
                     Text("$photoCount фотографий", color = MaterialTheme.colorScheme.primary)
                 }
-                Text("100 авторских шаблонов для $photoCount фотографий · выбери стиль и композицию", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                Text("Выбери готовую композицию. В превью показаны фотографии из твоей галереи.", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     (listOf("Все") + layouts.map { it.category }.distinct()).forEach { category ->
                         TextButton(onClick = { selectedCategory = category }) {
@@ -413,7 +413,7 @@ private fun CollageFeature(items: List<MediaItem>, s: UiSettings, onBack: () -> 
                 LazyVerticalGrid(columns = GridCells.Fixed(2), modifier = Modifier.weight(1f), contentPadding = PaddingValues(12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(visibleLayouts, key = { it.id }) { spec ->
                         Column(Modifier.clip(RoundedCornerShape(18.dp)).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .55f)).clickable { layout = spec.id; stage = 2 }.padding(10.dp)) {
-                            TemplateSketch(photoCount, spec.id, Modifier.fillMaxWidth().aspectRatio(1.2f))
+                            CollageTemplatePreview(items, photoCount, spec.id, Modifier.fillMaxWidth().aspectRatio(1.2f))
                             Text(spec.title, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(top = 8.dp))
                             Text(spec.subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                         }
@@ -491,23 +491,40 @@ private fun CollageFeature(items: List<MediaItem>, s: UiSettings, onBack: () -> 
 }
 
 @Composable
-private fun TemplateSketch(count: Int, layout: Int, modifier: Modifier = Modifier) {
-    val palette = listOf(Color(0xFFB99A78), Color(0xFF8EA9B8), Color(0xFFC58E88), Color(0xFF9A8FB5), Color(0xFF879B83))
-    val accent = palette[Math.floorMod(layout / 20 + layout % 5, palette.size)]
-    androidx.compose.foundation.Canvas(modifier.clip(RoundedCornerShape(12.dp)).background(Color(0xFF171717))) {
+private fun CollageTemplatePreview(
+    galleryItems: List<MediaItem>,
+    count: Int,
+    layout: Int,
+    modifier: Modifier = Modifier,
+) {
+    // Each card uses real local photos from the device gallery, clipped to the
+    // exact same geometry that is used by the collage renderer and exporter.
+    androidx.compose.foundation.layout.BoxWithConstraints(
+        modifier.clip(RoundedCornerShape(12.dp)).background(Color(0xFF171717))
+    ) {
         val rects = collageRects(count, layout)
         rects.forEachIndexed { index, r ->
-            val target = androidx.compose.ui.geometry.Rect(r.left * size.width, r.top * size.height, r.right * size.width, r.bottom * size.height)
-            val path = when (collageMask(layout)) {
-                1 -> androidx.compose.ui.graphics.Path().apply { addOval(target) }
-                2 -> androidx.compose.ui.graphics.Path().apply { moveTo(target.center.x,target.top); lineTo(target.right,target.top+target.height*.25f); lineTo(target.right,target.bottom-target.height*.25f); lineTo(target.center.x,target.bottom); lineTo(target.left,target.bottom-target.height*.25f); lineTo(target.left,target.top+target.height*.25f); close() }
-                3 -> androidx.compose.ui.graphics.Path().apply { moveTo(target.center.x,target.top); lineTo(target.right,target.center.y); lineTo(target.center.x,target.bottom); lineTo(target.left,target.center.y); close() }
-                4 -> androidx.compose.ui.graphics.Path().apply { moveTo(target.center.x,target.top); lineTo(target.right,target.bottom); lineTo(target.left,target.bottom); close() }
-                5 -> androidx.compose.ui.graphics.Path().apply { moveTo(target.center.x,target.top); cubicTo(target.right,target.top,target.right,target.center.y,target.center.x,target.bottom); cubicTo(target.left,target.center.y,target.left,target.top,target.center.x,target.top); close() }
-                else -> androidx.compose.ui.graphics.Path().apply { addRoundRect(androidx.compose.ui.geometry.RoundRect(target, androidx.compose.ui.geometry.CornerRadius(10.dp.toPx()))) }
+            val tileModifier = Modifier
+                .offset(x = maxWidth * r.left, y = maxHeight * r.top)
+                .size(width = maxWidth * r.width(), height = maxHeight * r.height())
+                .padding(1.5.dp)
+                .clip(collageComposeShape(layout))
+            val photo = galleryItems.getOrNull(index)
+            if (photo != null) {
+                AsyncImage(
+                    model = photo.uri,
+                    contentDescription = "Пример фотографии ${index + 1}",
+                    modifier = tileModifier,
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                )
+            } else {
+                Box(
+                    modifier = tileModifier.background(Color(0xFF303036)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("${index + 1}", color = Color.White.copy(alpha = .7f), fontSize = 12.sp)
+                }
             }
-            drawPath(path, if (index == 0) accent else accent.copy(alpha = .48f))
-            drawPath(path, Color.White.copy(alpha = .10f), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.dp.toPx()))
         }
     }
 }
