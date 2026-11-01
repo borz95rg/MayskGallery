@@ -26,6 +26,8 @@ object Keys {
     val FONT = floatPreferencesKey("font")
     val AUTO_UPDATE = booleanPreferencesKey("auto_update")
     val FAVORITES = stringSetPreferencesKey("favorites")
+    val ACCENT = intPreferencesKey("accent")
+    val FROST = floatPreferencesKey("frost")
     val COVERS = List(5) { stringPreferencesKey("cover$it") }
 }
 
@@ -46,6 +48,8 @@ class SettingsRepository(private val context: Context) {
             autoUpdate = p[Keys.AUTO_UPDATE] ?: d.autoUpdate,
             favorites = p[Keys.FAVORITES] ?: d.favorites,
             covers = Keys.COVERS.map { p[it] ?: "" },
+            accent = p[Keys.ACCENT] ?: d.accent,
+            frost = (p[Keys.FROST] ?: d.frost).coerceIn(0f, 1f),
         )
     }
 
@@ -57,7 +61,7 @@ class SettingsRepository(private val context: Context) {
     suspend fun resetLook() {
         context.dataStore.edit { p ->
             listOf(Keys.PRESET, Keys.COLUMNS, Keys.CORNER, Keys.GLASS, Keys.SHADOW, Keys.ANIM,
-                Keys.ALBUM_VIEW, Keys.NAV_TOP, Keys.FONT).forEach { p.remove(it) }
+                Keys.ALBUM_VIEW, Keys.NAV_TOP, Keys.FONT, Keys.ACCENT, Keys.FROST).forEach { p.remove(it) }
             Keys.COVERS.forEach { p.remove(it) }
         }
     }

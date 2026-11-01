@@ -86,6 +86,7 @@ fun Viewer(
     val pager = rememberPagerState(initialPage = startIndex.coerceIn(0, (items.size - 1).coerceAtLeast(0))) { items.size }
     var zoomed by remember { mutableStateOf(false) }
     var showInfo by remember { mutableStateOf(false) }
+    var playing by remember { mutableStateOf<MediaItem?>(null) }
     LaunchedEffect(pager.currentPage) { zoomed = false }
 
     val current = items.getOrNull(pager.currentPage)
@@ -103,6 +104,7 @@ fun Viewer(
                 onZoom = { zoomed = it },
                 onClose = onClose,
                 onInfo = { showInfo = true },
+                onPlay = { playing = items[page] },
             )
         }
 
@@ -169,6 +171,8 @@ fun Viewer(
             )
             InfoPanel(current, labels[current.key].orEmpty(), s, Modifier.align(Alignment.BottomCenter))
         }
+
+        playing?.let { VideoPlayer(it) { playing = null } }
     }
 }
 
@@ -180,6 +184,7 @@ private fun ViewerPage(
     onZoom: (Boolean) -> Unit,
     onClose: () -> Unit,
     onInfo: () -> Unit,
+    onPlay: () -> Unit,
 ) {
     val ctx = LocalContext.current
     var scale by remember { mutableFloatStateOf(1f) }
@@ -237,7 +242,7 @@ private fun ViewerPage(
                 onClick = {
                     if (secretMode) {
                         android.widget.Toast.makeText(ctx, "Верните видео из сейфа, чтобы воспроизвести", android.widget.Toast.LENGTH_SHORT).show()
-                    } else playVideo(ctx, item)
+                    } else onPlay()
                 },
                 modifier = Modifier
                     .align(Alignment.Center)

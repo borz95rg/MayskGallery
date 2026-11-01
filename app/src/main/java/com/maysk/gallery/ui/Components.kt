@@ -168,10 +168,11 @@ fun ScreenTitle(text: String, modifier: Modifier = Modifier, actions: @Composabl
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        val serif = MaterialTheme.typography.headlineSmall.fontFamily == androidx.compose.ui.text.font.FontFamily.Serif
         Text(
-            text,
+            if (serif) text.lowercase() else text,
             style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
+            fontWeight = if (serif) FontWeight.Normal else FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.weight(1f),
         )

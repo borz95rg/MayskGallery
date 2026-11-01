@@ -164,7 +164,8 @@ fun HomeScreen(
         }
 
         // ---- баннер с органической маской ----
-        val banner = s.covers[0].ifBlank { null } ?: photos.firstOrNull()?.uri?.toString()
+        val bannerPages = if (s.covers[0].isNotBlank()) listOf(s.covers[0]) else photos.take(5).map { it.uri.toString() }
+        val bannerState = androidx.compose.foundation.pager.rememberPagerState { bannerPages.size.coerceAtLeast(1) }
         Box(Modifier.fillMaxWidth().padding(horizontal = 22.dp).height(330.dp)) {
             Box(
                 Modifier
@@ -177,7 +178,11 @@ fun HomeScreen(
                         onLongClick = { onPick(0) },
                     ),
             ) {
-                if (banner != null) AsyncImage(banner, null, Modifier.fillMaxWidth().height(330.dp), contentScale = ContentScale.Crop)
+                androidx.compose.foundation.pager.HorizontalPager(bannerState, Modifier.fillMaxWidth().height(330.dp)) { pg ->
+                    bannerPages.getOrNull(pg)?.let {
+                        AsyncImage(it, null, Modifier.fillMaxWidth().height(330.dp), contentScale = ContentScale.Crop)
+                    }
+                }
                 Box(
                     Modifier.fillMaxWidth().height(330.dp).background(
                         Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.35f)))
@@ -237,9 +242,9 @@ fun HomeScreen(
                         if (cover != null) AsyncImage(cover, null, Modifier.matchParentSize(), contentScale = ContentScale.Crop)
                         if (a != null) Box(
                             Modifier.align(Alignment.BottomEnd).padding(6.dp)
-                                .clip(CircleShape).background(Soft)
+                                .clip(CircleShape).background(cs.primary)
                                 .padding(horizontal = 8.dp, vertical = 3.dp)
-                        ) { Text("${a.count}", fontSize = 12.sp, color = Color.Black) }
+                        ) { Text("${a.count}", fontSize = 12.sp, color = cs.onPrimary) }
                     }
                     Text(
                         (a?.name ?: "—") + " •",
@@ -255,22 +260,29 @@ fun HomeScreen(
             "воспоминания ✦", fontFamily = Serif, fontSize = 26.sp, color = Color.White,
             modifier = Modifier.padding(start = 22.dp, top = 14.dp),
         )
-        val year = items.firstOrNull()?.date()?.year ?: LocalDate.now().year
+        val years = remember(items) {
+            items.map { it.date().year }.distinct().sortedDescending().ifEmpty { listOf(LocalDate.now().year) }
+        }
+        var yearIdx by remember { mutableIntStateOf(0) }
+        val year = years[yearIdx.coerceIn(0, years.lastIndex)]
         var month by remember { mutableIntStateOf(LocalDate.now().monthValue - 1) }
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("$year", fontSize = 12.sp, color = cs.onSurfaceVariant)
+            Text(
+                if (years.size > 1) "$year ▾" else "$year", fontSize = 12.sp, color = Color.White,
+                modifier = Modifier.clickable { yearIdx = (yearIdx + 1) % years.size },
+            )
             months.forEachIndexed { i, m ->
                 val sel = i == month
                 Text(
                     m, fontSize = 12.sp,
-                    color = if (sel) Color.Black else cs.onSurfaceVariant,
+                    color = if (sel) cs.onPrimary else cs.onSurfaceVariant,
                     modifier = Modifier
                         .clip(CircleShape)
-                        .background(if (sel) Soft else Color.Transparent)
+                        .background(if (sel) cs.primary else Color.Transparent)
                         .clickable { month = i }
                         .padding(horizontal = 6.dp, vertical = 3.dp),
                 )
@@ -281,23 +293,42 @@ fun HomeScreen(
         }
         if (monthItems.isEmpty()) {
             Text("в этом месяце пока пусто", fontSize = 13.sp, color = cs.onSurfaceVariant, modifier = Modifier.padding(start = 22.dp, top = 6.dp))
-        } else LazyRow(
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 18.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            itemsIndexed(monthItems) { idx, it ->
-                Box(
-                    Modifier.size(width = 84.dp, height = 104.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(cs.surfaceVariant)
-                        .clickable { onOpen(monthItems, idx) },
-                ) {
-                    AsyncImage(it.uri, null, Modifier.matchParentSize(), contentScale = ContentScale.Crop)
-                    if (it.key in s.favorites) Icon(
-                        Icons.Filled.Favorite, null, tint = Color.White,
-                        modifier = Modifier.align(Alignment.TopEnd).padding(6.dp).size(14.dp),
-                    )
-                }
+        } else ThumbRow(monthItems, s, onOpen)
+
+        // ---- в этот день ----
+        val today = LocalDate.now()
+        val onThisDay = remember(items) {
+            items.filter { val d = it.date(); d.monthValue == today.monthValue && d.dayOfMonth == today.dayOfMonth && d.year < today.year }
+        }
+        if (onThisDay.isNotEmpty()) {
+            Text(
+                "в этот день ✦", fontFamily = Serif, fontSize = 26.sp, color = Color.White,
+                modifier = Modifier.padding(start = 22.dp, top = 22.dp, bottom = 10.dp),
+            )
+            ThumbRow(onThisDay.take(40), s, onOpen)
+        }
+    }
+}
+
+@Composable
+private fun ThumbRow(list: List<MediaItem>, s: UiSettings, onOpen: (List<MediaItem>, Int) -> Unit) {
+    val cs = MaterialTheme.colorScheme
+    LazyRow(
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 18.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        itemsIndexed(list) { idx, m ->
+            Box(
+                Modifier.size(width = 84.dp, height = 104.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(cs.surfaceVariant)
+                    .clickable { onOpen(list, idx) },
+            ) {
+                AsyncImage(m.uri, null, Modifier.matchParentSize(), contentScale = ContentScale.Crop)
+                if (m.key in s.favorites) Icon(
+                    Icons.Filled.Favorite, null, tint = Color.White,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(6.dp).size(14.dp),
+                )
             }
         }
     }
@@ -331,6 +362,7 @@ private fun androidx.compose.foundation.layout.RowScope.QuickCard(icon: ImageVec
 /** Плавающая стеклянная капсула: Фото · Альбомы (центр) · Видео. selected: 0, 1 или 2. */
 @Composable
 fun OriginalDock(selected: Int, modifier: Modifier = Modifier, onSelect: (Int) -> Unit) {
+    val ring = MaterialTheme.colorScheme.primary
     Box(modifier.fillMaxWidth().padding(horizontal = 26.dp, vertical = 12.dp), contentAlignment = Alignment.Center) {
         Row(
             Modifier.fillMaxWidth().height(74.dp)
@@ -346,7 +378,7 @@ fun OriginalDock(selected: Int, modifier: Modifier = Modifier, onSelect: (Int) -
         Column(
             Modifier.offset(y = (-4).dp).size(84.dp).clip(CircleShape)
                 .background(Brush.verticalGradient(listOf(Color(0xFF3A3A3F), Color(0xFF202023))))
-                .border(1.dp, Color.White.copy(alpha = if (selected == 1) 0.35f else 0.14f), CircleShape)
+                .border(if (selected == 1) 1.5.dp else 1.dp, if (selected == 1) ring else Color.White.copy(alpha = 0.14f), CircleShape)
                 .clickable { onSelect(1) },
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,

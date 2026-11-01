@@ -7,6 +7,10 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
@@ -116,10 +120,24 @@ private fun schemeFor(s: UiSettings, dark: Boolean): ColorScheme {
 @Composable
 fun MayskTheme(s: UiSettings, content: @Composable () -> Unit) {
     val dark = isDark(s, isSystemInDarkTheme())
-    val scheme = schemeFor(s, dark)
+    var scheme = schemeFor(s, dark)
+    if (s.accent != 0) {
+        val a = Color(s.accent)
+        scheme = scheme.copy(primary = a, onPrimary = if (a.luminance() > 0.5f) Color.Black else Color.White)
+    }
+    val typo = if (s.preset == ThemePreset.ORIGINAL) {
+        val b = Typography()
+        val sf = { st: androidx.compose.ui.text.TextStyle ->
+            st.copy(fontFamily = FontFamily.Serif, fontWeight = FontWeight.Normal)
+        }
+        b.copy(
+            headlineLarge = sf(b.headlineLarge), headlineMedium = sf(b.headlineMedium), headlineSmall = sf(b.headlineSmall),
+            titleLarge = sf(b.titleLarge), titleMedium = sf(b.titleMedium),
+        )
+    } else Typography()
     val d = LocalDensity.current
     CompositionLocalProvider(LocalDensity provides Density(d.density, d.fontScale * s.fontScale)) {
-        MaterialTheme(colorScheme = scheme, content = content)
+        MaterialTheme(colorScheme = scheme, typography = typo, content = content)
     }
 }
 
@@ -158,5 +176,6 @@ fun Modifier.glass(s: UiSettings, shape: Shape = s.panelShape()): Modifier {
         .shadow(s.shadowDp(), shape, clip = false)
         .clip(shape)
         .background(c.surface.copy(alpha = s.glassAlpha))
+        .background(Color.White.copy(alpha = s.frost * 0.18f))
         .border(1.dp, Color.White.copy(alpha = 0.14f), shape)
 }

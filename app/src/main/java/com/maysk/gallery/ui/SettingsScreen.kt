@@ -1,6 +1,9 @@
 package com.maysk.gallery.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -92,6 +95,27 @@ fun SettingsScreen(vm: MainViewModel, s: UiSettings) {
 
         Section("Тема")
         ChipRow(ThemePreset.values().toList(), s.preset, { it.title }) { vm.set(Keys.PRESET, it.name) }
+
+        Section("Акцентный цвет")
+        Row(
+            Modifier.padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            listOf(0xFFB88CFF, 0xFFFF5FB0, 0xFFFF7A59, 0xFFFFC83D, 0xFF4ADE80, 0xFF36D1DC, 0xFF5B86E5).forEach { c ->
+                Box(
+                    Modifier.size(32.dp).clip(CircleShape).background(Color(c))
+                        .border(if (s.accent == c.toInt()) 2.dp else 0.dp, Color.White, CircleShape)
+                        .clickable { vm.set(Keys.ACCENT, c.toInt()) }
+                )
+            }
+            androidx.compose.material3.TextButton(onClick = { vm.set(Keys.ACCENT, 0) }) { Text("Авто") }
+        }
+        Text("Любой оттенок:", color = cs.onSurfaceVariant, modifier = Modifier.padding(start = 16.dp, top = 6.dp))
+        SliderRow(0f, 0f..360f, 0) { vm.set(Keys.ACCENT, android.graphics.Color.HSVToColor(floatArrayOf(it, 0.6f, 1f))) }
+
+        Section("Матовость стекла: ${(s.frost * 100).toInt()}%")
+        SliderRow(s.frost, 0f..1f, 0) { vm.set(Keys.FROST, it) }
 
         Section("Размер карточек (колонок: ${s.columns})")
         SliderRow(s.columns.toFloat(), 2f..8f, 5) { vm.set(Keys.COLUMNS, it.roundToInt()) }

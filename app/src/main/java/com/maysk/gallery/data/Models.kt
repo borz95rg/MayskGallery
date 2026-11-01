@@ -65,4 +65,8 @@ data class UiSettings(
     val favorites: Set<String> = emptySet(),
     /** Свои картинки: 0 = баннер, 1..4 = обложки альбомов. Пусто = брать из галереи. */
     val covers: List<String> = List(5) { "" },
+    /** Акцентный цвет ARGB; 0 = взять из темы. */
+    val accent: Int = 0,
+    /** Матовость стекла 0..1 (светлая дымка на стеклянных панелях). */
+    val frost: Float = 0f,
 )
