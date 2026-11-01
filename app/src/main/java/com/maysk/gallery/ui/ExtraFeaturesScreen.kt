@@ -29,6 +29,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -138,50 +140,71 @@ private fun DuplicatesFeature(items: List<MediaItem>, s: UiSettings, enabled: Bo
     }
 }
 
-private data class CollageLayoutSpec(val id: Int, val title: String, val subtitle: String)
+private data class CollageLayoutSpec(val id: Int, val title: String, val subtitle: String, val category: String)
 
+/** 120 editable layouts. Each layout is generated from a distinct composition family and variation. */
 private fun collageRects(count: Int, layout: Int): List<android.graphics.RectF> {
     if (count <= 0) return emptyList()
-    if (layout == 1 && count > 1) {
-        val result = mutableListOf(android.graphics.RectF(0f, 0f, .62f, 1f))
-        val h = 1f / (count - 1)
-        for (i in 1 until count) result += android.graphics.RectF(.635f, (i - 1) * h, 1f, i * h)
-        return result
-    }
-    if (layout == 2 && count >= 3) {
-        val result = mutableListOf(android.graphics.RectF(0f, 0f, .58f, .58f))
-        result += android.graphics.RectF(.595f, 0f, 1f, .39f)
-        result += android.graphics.RectF(.595f, .405f, 1f, .58f)
-        val rest = count - 3
-        if (rest > 0) {
-            val cols = 2
-            val rows = (rest + cols - 1) / cols
+    val family = Math.floorMod(layout, 15)
+    val variant = Math.floorDiv(layout, 15)
+    val gap = .008f + (variant % 4) * .004f
+    fun grid(n: Int, cols: Int, reverse: Boolean = false, offset: Int = 0): List<android.graphics.RectF> {
+        val rows = (n + cols - 1) / cols
+        return (0 until n).map { i ->
+            val j = if (reverse) n - 1 - i else i
+            val col = (j + offset) % cols
+            val row = j / cols
             val cellW = 1f / cols
-            val cellH = .39f / rows
-            for (i in 0 until rest) {
-                val row = i / cols
-                val col = i % cols
-                result += android.graphics.RectF(col * cellW, .61f + row * cellH, (col + 1) * cellW - .012f, .61f + (row + 1) * cellH - .012f)
+            val cellH = 1f / rows
+            android.graphics.RectF(col * cellW + gap, row * cellH + gap, (col + 1) * cellW - gap, (row + 1) * cellH - gap)
+        }
+    }
+    if (count == 2) {
+        return when (family % 6) {
+            0 -> listOf(android.graphics.RectF(gap, gap, .5f-gap, 1f-gap), android.graphics.RectF(.5f+gap, gap, 1f-gap, 1f-gap))
+            1 -> listOf(android.graphics.RectF(gap, gap, 1f-gap, .5f-gap), android.graphics.RectF(gap, .5f+gap, 1f-gap, 1f-gap))
+            2 -> listOf(android.graphics.RectF(gap, gap, .64f-gap, 1f-gap), android.graphics.RectF(.66f+gap, gap, 1f-gap, 1f-gap))
+            3 -> listOf(android.graphics.RectF(gap, gap, 1f-gap, .64f-gap), android.graphics.RectF(gap, .66f+gap, 1f-gap, 1f-gap))
+            4 -> listOf(android.graphics.RectF(gap, gap, .5f-gap, .5f-gap), android.graphics.RectF(.5f+gap, .5f+gap, 1f-gap, 1f-gap))
+            else -> listOf(android.graphics.RectF(.18f, gap, .82f, .48f-gap), android.graphics.RectF(.18f, .52f+gap, .82f, 1f-gap))
+        }
+    }
+    val rest = count - 1
+    return when (family) {
+        0 -> grid(count, if (count < 5) 2 else 3, variant % 2 == 1, variant % 3)
+        1 -> listOf(android.graphics.RectF(gap, gap, .62f-gap, 1f-gap)) + (0 until rest).map { i -> android.graphics.RectF(.64f+gap, i.toFloat()/rest+gap, 1f-gap, (i+1f)/rest-gap) }
+        2 -> listOf(android.graphics.RectF(.38f+gap, gap, 1f-gap, 1f-gap)) + (0 until rest).map { i -> android.graphics.RectF(gap, i.toFloat()/rest+gap, .36f-gap, (i+1f)/rest-gap) }
+        3 -> listOf(android.graphics.RectF(gap, gap, 1f-gap, .60f-gap)) + grid(rest, if (rest <= 2) 2 else 3).map { r -> android.graphics.RectF(r.left, .62f+r.top*.38f, r.right, .62f+r.bottom*.38f) }
+        4 -> grid(rest, if (rest <= 2) 2 else 3).map { r -> android.graphics.RectF(r.left, r.top*.38f, r.right, r.bottom*.38f) } + listOf(android.graphics.RectF(gap, .40f+gap, 1f-gap, 1f-gap))
+        5 -> {
+            val result = mutableListOf(android.graphics.RectF(.25f, .22f, .75f, .78f))
+            val ring = listOf(android.graphics.RectF(0f,0f,.24f,.21f), android.graphics.RectF(.26f,0f,.74f,.20f), android.graphics.RectF(.76f,0f,1f,.21f), android.graphics.RectF(0f,.23f,.23f,.77f), android.graphics.RectF(.77f,.23f,1f,.77f), android.graphics.RectF(0f,.79f,.24f,1f), android.graphics.RectF(.26f,.80f,.74f,1f), android.graphics.RectF(.76f,.79f,1f,1f))
+            result + ring.take(rest)
+        }
+        6 -> { val cols = if (variant % 2 == 0) 2 else 3; grid(count, cols, variant % 3 == 1, variant % 2) }
+        7 -> { val cols = if (count < 5) count else 3; grid(count, cols, variant % 2 == 0, variant % 3) }
+        8 -> { val result = mutableListOf<android.graphics.RectF>(); val heroH = .42f; result += android.graphics.RectF(gap,gap,1f-gap,heroH-gap); result + grid(rest, 2, variant % 2 == 1).map { r -> android.graphics.RectF(r.left, heroH+r.top*(1f-heroH), r.right, heroH+r.bottom*(1f-heroH)) } }
+        9 -> { val cols = if (count <= 4) 2 else 3; grid(count, cols, variant % 2 == 0, variant % 3) }
+        10 -> { val rows = count; (0 until count).map { i -> val top = i.toFloat()/rows; android.graphics.RectF(if (i%2==0) gap else .18f, top+gap, if (i%2==0) .82f else 1f-gap, (i+1f)/rows-gap) } }
+        11 -> {
+            val top = listOf(android.graphics.RectF(gap,gap,.49f-gap,.48f-gap), android.graphics.RectF(.51f+gap,gap,1f-gap,.48f-gap))
+            val bottomCount = count - 2
+            top + grid(bottomCount, if (bottomCount <= 2) 2 else 3, variant % 2 == 0).map { r -> android.graphics.RectF(r.left, .52f+r.top*.48f, r.right, .52f+r.bottom*.48f) }
+        }
+        12 -> { val base = grid(count, 2, variant%2==1); base.mapIndexed { i,r -> if (i%2==0) android.graphics.RectF(r.left,r.top*.92f,r.right,r.bottom*.92f) else android.graphics.RectF(r.left,r.top*.92f+.08f,r.right,r.bottom*.92f+.08f) } }
+        13 -> {
+            val result = mutableListOf(android.graphics.RectF(gap,.19f,1f-gap,.81f))
+            val perRow = (rest + 1) / 2
+            result + (0 until rest).map { i ->
+                val slot = i / 2
+                val left = slot.toFloat() / perRow
+                val right = (slot + 1f) / perRow
+                if (i % 2 == 0) android.graphics.RectF(left+gap, gap, right-gap, .16f-gap)
+                else android.graphics.RectF(left+gap, .84f+gap, right-gap, 1f-gap)
             }
         }
-        return result.take(count)
-    }
-    val cols = when {
-        count <= 2 -> 2
-        count <= 4 -> 2
-        count <= 6 -> 3
-        else -> 4
-    }
-    val rows = (count + cols - 1) / cols
-    return (0 until count).map { i ->
-        val col = i % cols
-        val row = i / cols
-        val gap = .012f
-        android.graphics.RectF(
-            col.toFloat() / cols + gap, row.toFloat() / rows + gap,
-            (col + 1f) / cols - gap, (row + 1f) / rows - gap,
-        )
-    }
+        else -> grid(count, if (variant%2==0) 2 else 3, variant%2==1, variant%4)
+    }.take(count).map { r -> android.graphics.RectF(r.left.coerceIn(0f,1f), r.top.coerceIn(0f,1f), r.right.coerceIn(0f,1f), r.bottom.coerceIn(0f,1f)) }
 }
 
 @Composable
@@ -196,6 +219,8 @@ private fun CollageFeature(items: List<MediaItem>, s: UiSettings, onBack: () -> 
     var caption by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
+    var savedUri by remember { mutableStateOf<Uri?>(null) }
+    var selectedCategory by remember { mutableStateOf("Все") }
     fun saveCurrentCollage() {
         if (busy || selected.size != photoCount) return
         busy = true
@@ -203,19 +228,25 @@ private fun CollageFeature(items: List<MediaItem>, s: UiSettings, onBack: () -> 
         val text = caption.trim()
         val chosenLayout = layout
         scope.launch {
-            val saved = withContext(Dispatchers.IO) { saveCollage(ctx, snapshot, chosenLayout, text) }
+            val uri = withContext(Dispatchers.IO) { saveCollage(ctx, snapshot, chosenLayout, text) }
             busy = false
-            message = if (saved) "Коллаж сохранён в Pictures/MayskGallery" else "Не удалось сохранить коллаж. Проверь доступ к фотографиям."
+            if (uri != null) { savedUri = uri; message = "Коллаж успешно сохранён"; stage = 4 }
+            else message = "Не удалось сохранить коллаж. Проверь доступ к фотографиям и свободное место."
         }
     }
     val writePermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) saveCurrentCollage() else message = "Для сохранения коллажа нужно разрешить доступ к файлам."
     }
-    val layouts = remember { listOf(
-        CollageLayoutSpec(0, "Ровная сетка", "Все фотографии одинакового размера"),
-        CollageLayoutSpec(1, "Главный кадр", "Одна большая фотография и остальные рядом"),
-        CollageLayoutSpec(2, "Мозаика", "Асимметричная композиция"),
-    ) }
+    val layouts = remember(photoCount) {
+        val families = listOf("Классическая сетка", "Главный кадр слева", "Главный кадр справа", "Большое фото сверху", "Большое фото снизу", "Центральная композиция", "Журнальная сетка", "Мозаика", "Фотоистория", "Асимметрия", "Вертикальная лента", "Редакционный стиль", "Динамика", "Киноплёнка", "Свободная композиция")
+        val categories = listOf("Классика", "Журнальные", "Мозаика", "Асимметрия", "Истории", "Креатив")
+        (0 until 120).map { id ->
+            val family = id % families.size
+            val variation = id / families.size + 1
+            CollageLayoutSpec(id, "${families[family]} №$variation", "${photoCount} фото · вариант $variation", categories[(family + variation) % categories.size])
+        }
+    }
+    val visibleLayouts = remember(layouts, selectedCategory) { if (selectedCategory == "Все") layouts else layouts.filter { it.category == selectedCategory } }
     androidx.activity.compose.BackHandler(enabled = stage > 0) { stage = (stage - 1).coerceAtLeast(0) }
     Column(Modifier.fillMaxSize()) {
         ScreenTitle("Коллаж", actions = { TextButton(onClick = onBack) { Text("Закрыть") } })
@@ -236,9 +267,16 @@ private fun CollageFeature(items: List<MediaItem>, s: UiSettings, onBack: () -> 
                     TextButton(onClick = { stage = 0 }) { Text("← Количество") }
                     Text("$photoCount фотографий", color = MaterialTheme.colorScheme.primary)
                 }
-                Text("Выбери расположение фотографий", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                Text("120 шаблонов для $photoCount фотографий · выбери подходящую композицию", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    (listOf("Все") + layouts.map { it.category }.distinct()).forEach { category ->
+                        TextButton(onClick = { selectedCategory = category }) {
+                            Text(category, color = if (selectedCategory == category) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
                 LazyVerticalGrid(columns = GridCells.Fixed(2), modifier = Modifier.weight(1f), contentPadding = PaddingValues(12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    items(layouts, key = { it.id }) { spec ->
+                    items(visibleLayouts, key = { it.id }) { spec ->
                         Column(Modifier.clip(RoundedCornerShape(18.dp)).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .55f)).clickable { layout = spec.id; stage = 2 }.padding(10.dp)) {
                             TemplateSketch(photoCount, spec.id, Modifier.fillMaxWidth().aspectRatio(1.2f))
                             Text(spec.title, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(top = 8.dp))
@@ -269,6 +307,17 @@ private fun CollageFeature(items: List<MediaItem>, s: UiSettings, onBack: () -> 
                     }
                 }
                 Button(enabled = selected.size == photoCount && replaceIndex < 0, onClick = { stage = 3 }, modifier = Modifier.fillMaxWidth().padding(16.dp)) { Text("Показать результат") }
+            }
+            4 -> {
+                ScreenTitle("Коллаж сохранён", actions = { TextButton(onClick = onBack) { Text("Готово") } })
+                Text("Готовое изображение уже находится в галерее телефона · Pictures/MayskGallery", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                savedUri?.let { uri ->
+                    AsyncImage(model = uri, contentDescription = "Сохранённый коллаж", modifier = Modifier.fillMaxWidth().weight(1f).padding(14.dp).clip(RoundedCornerShape(18.dp)), contentScale = androidx.compose.ui.layout.ContentScale.Fit)
+                }
+                Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { stage = 3 }, modifier = Modifier.weight(1f)) { Text("Редактировать") }
+                    TextButton(onClick = { savedUri = null; stage = 0; selected = emptyList(); caption = "" }) { Text("Новый коллаж") }
+                }
             }
             else -> {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp)) {
@@ -352,8 +401,8 @@ private fun decodeForCollage(context: android.content.Context, uri: Uri): Bitmap
     return context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
 }
 
-private fun saveCollage(context: android.content.Context, items: List<MediaItem>, layout: Int, caption: String): Boolean {
-    if (items.size !in 2..8) return false
+private fun saveCollage(context: android.content.Context, items: List<MediaItem>, layout: Int, caption: String): Uri? {
+    if (items.size !in 2..8) return null
     var outputUri: Uri? = null
     var bitmap: Bitmap? = null
     return try {
@@ -385,7 +434,7 @@ private fun saveCollage(context: android.content.Context, items: List<MediaItem>
             source.recycle()
             decodedCount++
         }
-        if (decodedCount != items.size) return false
+        if (decodedCount != items.size) return null
         if (caption.isNotBlank()) {
             val strip = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.argb(175, 0, 0, 0) }
             canvas.drawRect(0f, size - 150f, size.toFloat(), size.toFloat(), strip)
@@ -404,17 +453,20 @@ private fun saveCollage(context: android.content.Context, items: List<MediaItem>
                 put(MediaStore.Images.Media.IS_PENDING, 1)
             }
         }
-        outputUri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values) ?: return false
-        val ok = context.contentResolver.openOutputStream(outputUri!!)?.use { outputBitmap.compress(Bitmap.CompressFormat.JPEG, 94, it) } ?: false
+        outputUri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values) ?: return null
+        val ok = context.contentResolver.openOutputStream(outputUri!!)?.use { stream -> outputBitmap.compress(Bitmap.CompressFormat.JPEG, 94, stream).also { stream.flush() } } ?: false
         if (ok && Build.VERSION.SDK_INT >= 29) {
             val done = ContentValues().apply { put(MediaStore.Images.Media.IS_PENDING, 0) }
             context.contentResolver.update(outputUri!!, done, null, null)
         }
-        if (!ok) context.contentResolver.delete(outputUri!!, null, null)
-        ok
+        if (!ok) { context.contentResolver.delete(outputUri!!, null, null); null }
+        else {
+            val sizeBytes = context.contentResolver.query(outputUri!!, arrayOf(MediaStore.Images.Media.SIZE), null, null, null)?.use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else 0L } ?: 0L
+            if (sizeBytes > 0L) outputUri else { context.contentResolver.delete(outputUri!!, null, null); null }
+        }
     } catch (_: Exception) {
         outputUri?.let { runCatching { context.contentResolver.delete(it, null, null) } }
-        false
+        null
     } finally { bitmap?.recycle() }
 }
 
