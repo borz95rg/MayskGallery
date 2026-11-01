@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.maysk.gallery.ai.AiIndex
 import com.maysk.gallery.data.MediaItem
 import com.maysk.gallery.data.MediaRepository
+import com.maysk.gallery.data.SecretVault
 import com.maysk.gallery.data.SettingsRepository
 import com.maysk.gallery.data.UiSettings
 import com.maysk.gallery.update.UpdateChecker
@@ -28,6 +29,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val ctx = app.applicationContext
     private val repo = SettingsRepository(ctx)
     private val index = AiIndex(ctx)
+    val vault = SecretVault(ctx)
+
+    private val _secret = MutableStateFlow<List<MediaItem>>(emptyList())
+    val secret: StateFlow<List<MediaItem>> = _secret.asStateFlow()
 
     val settings: StateFlow<UiSettings> =
         repo.flow.stateIn(viewModelScope, SharingStarted.Eagerly, UiSettings())
@@ -55,6 +60,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private var indexJob: Job? = null
 
     init {
+        refreshSecret()
         // автопроверка обновлений при запуске
         viewModelScope.launch {
             delay(1500)
@@ -122,6 +128,33 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 .onFailure {
                     if (manual) _message.value = "Не удалось проверить обновления"
                 }
+        }
+    }
+
+    fun refreshSecret() {
+        viewModelScope.launch { _secret.value = withContext(Dispatchers.IO) { vault.list() } }
+    }
+
+    /** Копирует файл в сейф. Оригинал потом удаляет UI (нужно подтверждение системы). */
+    suspend fun hideToVault(item: MediaItem): Boolean {
+        val ok = withContext(Dispatchers.IO) { vault.hide(item) }
+        refreshSecret()
+        return ok
+    }
+
+    fun restoreFromVault(item: MediaItem, done: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val ok = withContext(Dispatchers.IO) { vault.restore(item) }
+            refreshSecret()
+            if (ok) reload()
+            done(ok)
+        }
+    }
+
+    fun deleteFromVault(item: MediaItem) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { vault.delete(item) }
+            refreshSecret()
         }
     }
 

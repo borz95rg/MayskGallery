@@ -29,6 +29,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Icon
@@ -74,6 +76,10 @@ fun Viewer(
     onClose: () -> Unit,
     onFavorite: (MediaItem) -> Unit,
     onDelete: (MediaItem) -> Unit,
+    secretMode: Boolean = false,
+    onEdit: (MediaItem) -> Unit = {},
+    onHide: (MediaItem) -> Unit = {},
+    onRestore: (MediaItem) -> Unit = {},
 ) {
     BackHandler(onBack = onClose)
     val ctx = LocalContext.current
@@ -93,6 +99,7 @@ fun Viewer(
             ViewerPage(
                 item = items[page],
                 zoomed = zoomed && page == pager.currentPage,
+                secretMode = secretMode,
                 onZoom = { zoomed = it },
                 onClose = onClose,
                 onInfo = { showInfo = true },
@@ -124,18 +131,27 @@ fun Viewer(
                     .padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = { share(ctx, current) }) {
-                    Icon(Icons.Filled.Share, "Поделиться", tint = MaterialTheme.colorScheme.onSurface)
-                }
-                IconButton(onClick = { onFavorite(current) }) {
-                    Icon(
-                        if (fav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                        "Избранное",
-                        tint = if (fav) Color(0xFFFF4D8D) else MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-                IconButton(onClick = { edit(ctx, current) }) {
-                    Icon(Icons.Filled.Edit, "Изменить", tint = MaterialTheme.colorScheme.onSurface)
+                if (secretMode) {
+                    IconButton(onClick = { onRestore(current) }) {
+                        Icon(Icons.Filled.LockOpen, "Вернуть в галерею", tint = MaterialTheme.colorScheme.onSurface)
+                    }
+                } else {
+                    IconButton(onClick = { share(ctx, current) }) {
+                        Icon(Icons.Filled.Share, "Поделиться", tint = MaterialTheme.colorScheme.onSurface)
+                    }
+                    IconButton(onClick = { onFavorite(current) }) {
+                        Icon(
+                            if (fav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                            "Избранное",
+                            tint = if (fav) Color(0xFFFF4D8D) else MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                    IconButton(onClick = { if (current.isVideo) edit(ctx, current) else onEdit(current) }) {
+                        Icon(Icons.Filled.Edit, "Изменить", tint = MaterialTheme.colorScheme.onSurface)
+                    }
+                    IconButton(onClick = { onHide(current) }) {
+                        Icon(Icons.Filled.Lock, "Спрятать в сейф", tint = MaterialTheme.colorScheme.onSurface)
+                    }
                 }
                 IconButton(onClick = { onDelete(current) }) {
                     Icon(Icons.Filled.Delete, "Удалить", tint = MaterialTheme.colorScheme.onSurface)
@@ -159,6 +175,7 @@ fun Viewer(
 @Composable
 private fun ViewerPage(
     item: MediaItem,
+    secretMode: Boolean,
     zoomed: Boolean,
     onZoom: (Boolean) -> Unit,
     onClose: () -> Unit,
@@ -217,7 +234,11 @@ private fun ViewerPage(
         )
         if (item.isVideo) {
             IconButton(
-                onClick = { playVideo(ctx, item) },
+                onClick = {
+                    if (secretMode) {
+                        android.widget.Toast.makeText(ctx, "Верните видео из сейфа, чтобы воспроизвести", android.widget.Toast.LENGTH_SHORT).show()
+                    } else playVideo(ctx, item)
+                },
                 modifier = Modifier
                     .align(Alignment.Center)
                     .size(72.dp)

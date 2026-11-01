@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Style
@@ -31,7 +32,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -46,12 +49,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import com.maysk.gallery.MainViewModel
 import com.maysk.gallery.data.MediaItem
 import com.maysk.gallery.update.ApkInstaller
 
-private class ViewerState(val items: List<MediaItem>, val index: Int)
+private class ViewerState(val items: List<MediaItem>, val index: Int, val secret: Boolean = false)
 
 private data class Tab(val title: String, val icon: ImageVector)
 
@@ -59,6 +66,7 @@ private val tabs = listOf(
     Tab("Галерея", Icons.Filled.PhotoLibrary),
     Tab("Альбомы", Icons.Filled.Style),
     Tab("AI Поиск", Icons.Filled.AutoAwesome),
+    Tab("Сейф", Icons.Filled.Lock),
     Tab("Настройки", Icons.Filled.Settings),
 )
 
@@ -80,10 +88,35 @@ private fun RootContent(vm: MainViewModel) {
     val update by vm.update.collectAsStateWithLifecycle()
     val message by vm.message.collectAsStateWithLifecycle()
     val loaded by vm.loaded.collectAsStateWithLifecycle()
+    val secretItems by vm.secret.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
 
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var openAlbum by rememberSaveable { mutableStateOf<String?>(null) }
     var viewer by remember { mutableStateOf<ViewerState?>(null) }
+    var editing by remember { mutableStateOf<MediaItem?>(null) }
+    var vaultUnlocked by remember { mutableStateOf(false) }
+
+    // сейф закрывается при выходе из вкладки и при сворачивании приложения
+    LaunchedEffect(tab) { if (tab != 3) vaultUnlocked = false }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val obs = LifecycleEventObserver { _, e ->
+            if (e == Lifecycle.Event.ON_STOP && viewer?.secret != true) vaultUnlocked = false
+        }
+        lifecycleOwner.lifecycle.addObserver(obs)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
+    }
+    // в сейфе запрещены скриншоты и превью в списке приложений
+    val secure = tab == 3 || viewer?.secret == true
+    DisposableEffect(secure) {
+        val w = ctx.findActivity()?.window
+        if (secure) w?.setFlags(
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+        )
+        onDispose { w?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE) }
+    }
 
     // ---- разрешения ----
     val perms = remember {
@@ -117,6 +150,27 @@ private fun RootContent(vm: MainViewModel) {
                 vm.reload()
             } catch (_: SecurityException) {
                 Toast.makeText(ctx, "Не удалось удалить файл", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    /** После копирования в сейф просим систему удалить оригинал (появится диалог подтверждения). */
+    fun deleteOriginal(item: MediaItem) {
+        if (Build.VERSION.SDK_INT >= 30) {
+            val pi = MediaStore.createDeleteRequest(ctx.contentResolver, listOf(item.uri))
+            deleteLauncher.launch(IntentSenderRequest.Builder(pi.intentSender).build())
+        } else {
+            try {
+                ctx.contentResolver.delete(item.uri, null, null)
+                viewer = null
+                vm.reload()
+            } catch (e: SecurityException) {
+                val ra = if (Build.VERSION.SDK_INT >= 29) e as? android.app.RecoverableSecurityException else null
+                if (ra != null) {
+                    deleteLauncher.launch(IntentSenderRequest.Builder(ra.userAction.actionIntent.intentSender).build())
+                } else {
+                    Toast.makeText(ctx, "Не удалось удалить оригинал", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
@@ -163,6 +217,13 @@ private fun RootContent(vm: MainViewModel) {
                         0 -> GalleryScreen(items, s) { list, i -> viewer = ViewerState(list, i) }
                         1 -> AlbumsScreen(items, s, openAlbum, { openAlbum = it }) { list, i -> viewer = ViewerState(list, i) }
                         2 -> SearchScreen(items, labels, progress, s) { list, i -> viewer = ViewerState(list, i) }
+                        3 -> SecretTab(
+                            vault = vm.vault,
+                            items = secretItems,
+                            s = s,
+                            unlocked = vaultUnlocked,
+                            onUnlocked = { vaultUnlocked = true },
+                        ) { list, i -> viewer = ViewerState(list, i, secret = true) }
                         else -> SettingsScreen(vm, s)
                     }
                 }
@@ -177,7 +238,43 @@ private fun RootContent(vm: MainViewModel) {
                 labels = labels,
                 onClose = { viewer = null },
                 onFavorite = { vm.toggleFavorite(it) },
-                onDelete = { delete(it) },
+                onDelete = {
+                    if (v.secret) {
+                        vm.deleteFromVault(it)
+                        viewer = null
+                    } else delete(it)
+                },
+                secretMode = v.secret,
+                onEdit = { editing = it },
+                onHide = { item ->
+                    scope.launch {
+                        if (vm.hideToVault(item)) deleteOriginal(item)
+                        else Toast.makeText(ctx, "Не удалось спрятать файл", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                onRestore = { item ->
+                    vm.restoreFromVault(item) { ok ->
+                        Toast.makeText(
+                            ctx,
+                            if (ok) "Возвращено в Pictures/Restored" else "Не удалось вернуть файл",
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                        if (ok) viewer = null
+                    }
+                },
+            )
+        }
+
+        editing?.let { item ->
+            EditorScreen(
+                item = item,
+                s = s,
+                onClose = { editing = null },
+                onSaved = {
+                    editing = null
+                    viewer = null
+                    vm.reload()
+                },
             )
         }
     }
