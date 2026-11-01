@@ -28,12 +28,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Landscape
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.outlined.VideoLibrary
@@ -119,12 +119,12 @@ fun rememberCoverPicker(vm: MainViewModel): (Int) -> Unit {
 @Composable
 fun HomeScreen(
     items: List<MediaItem>,
-    secretCount: Int,
     s: UiSettings,
     onOpen: (List<MediaItem>, Int) -> Unit,
     onFilter: (String, List<MediaItem>) -> Unit,
     onTab: (Int) -> Unit,
     onPick: (Int) -> Unit,
+    onSelfie: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
     val photos = remember(items) { items.filter { !it.isVideo } }
@@ -160,7 +160,7 @@ fun HomeScreen(
                         "Все альбомы" to 1, "AI Поиск" to 2, "Сейф" to 3,
                         "Корзина" to 8, "Воспоминания" to 9, "Дубликаты" to 10,
                         "Коллаж" to 11, "Слайд-шоу" to 12, "Карта фотографий" to 13,
-                        "Приватные альбомы" to 3, "Настройки" to 4,
+                        "Настройки" to 4,
                     ).forEach { (t, i) ->
                         DropdownMenuItem(text = { Text(t) }, onClick = { menu = false; onTab(i) })
                     }
@@ -214,7 +214,7 @@ fun HomeScreen(
             QuickCard(Icons.Filled.Star, "избранное", favs.size) { onFilter("избранное", favs) }
             QuickCard(Icons.Filled.History, "недавние", recent.size) { onFilter("недавние", recent) }
             QuickCard(Icons.Filled.Place, "места", albums.size) { onTab(1) }
-            QuickCard(Icons.Filled.VisibilityOff, "скрытые", secretCount) { onTab(3) }
+            QuickCard(Icons.Filled.CameraAlt, "селфи", items.count { it.bucket.equals("Selfies", ignoreCase = true) }) { onSelfie() }
         }
 
         // ---- альбомы ----
