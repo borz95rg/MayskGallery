@@ -95,8 +95,7 @@ private fun RootContent(vm: MainViewModel) {
     val secretItems by vm.secret.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
 
-    // Единый оригинальный интерфейс для всех тем: тема меняет только оформление.
-    val orig = true
+    val orig = s.preset == ThemePreset.ORIGINAL
     // 0 Галерея, 1 Альбомы, 2 AI, 3 Сейф, 4 Настройки, 5 Главная (Original), 6 Видео, 7 Подборка
     var tab by rememberSaveable { mutableIntStateOf(5) }
     var filter by remember { mutableStateOf<Pair<String, List<MediaItem>>?>(null) }
@@ -265,7 +264,6 @@ private fun RootContent(vm: MainViewModel) {
                                 MediaGrid(f?.second ?: emptyList(), s, onOpen = { viewer = ViewerState(f?.second ?: emptyList(), it) })
                             }
                         }
-                        8 -> TrashScreen(s) { list, i -> viewer = ViewerState(list, i) }
                         else -> SettingsScreen(vm, s)
                     }
                 }

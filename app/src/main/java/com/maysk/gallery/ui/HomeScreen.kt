@@ -156,7 +156,7 @@ fun HomeScreen(
             Box {
                 RoundIcon(Icons.Filled.Menu) { menu = true }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                    listOf("Все альбомы" to 1, "AI Поиск" to 2, "Сейф" to 3, "Корзина" to 8, "Настройки" to 4).forEach { (t, i) ->
+                    listOf("Все альбомы" to 1, "AI Поиск" to 2, "Сейф" to 3, "Настройки" to 4).forEach { (t, i) ->
                         DropdownMenuItem(text = { Text(t) }, onClick = { menu = false; onTab(i) })
                     }
                 }
@@ -263,8 +263,8 @@ fun HomeScreen(
         val years = remember(items) {
             items.map { it.date().year }.distinct().sortedDescending().ifEmpty { listOf(LocalDate.now().year) }
         }
-        var selectedYear by remember { mutableIntStateOf(LocalDate.now().year.takeIf { it in years } ?: years.first()) }
-        var yearMenu by remember { mutableStateOf(false) }
+        var yearIdx by remember { mutableIntStateOf(0) }
+        val year = years[yearIdx.coerceIn(0, years.lastIndex)]
         var month by remember { mutableIntStateOf(LocalDate.now().monthValue - 1) }
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp),
@@ -272,48 +272,28 @@ fun HomeScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                "$selectedYear ▾", fontSize = 12.sp, color = Color.White,
-                modifier = Modifier.clickable { yearMenu = true },
+                if (years.size > 1) "$year ▾" else "$year", fontSize = 12.sp, color = Color.White,
+                modifier = Modifier.clickable { yearIdx = (yearIdx + 1) % years.size },
             )
-            DropdownMenu(expanded = yearMenu, onDismissRequest = { yearMenu = false }) {
-                years.forEach { y ->
-                    DropdownMenuItem(
-                        text = { Text(y.toString()) },
-                        onClick = { selectedYear = y; yearMenu = false },
-                    )
-                }
-            }
             months.forEachIndexed { i, m ->
-                val hasItems = items.any { val d = it.date(); d.year == selectedYear && d.monthValue == i + 1 }
                 val sel = i == month
                 Text(
                     m, fontSize = 12.sp,
-                    color = when { sel -> cs.onPrimary; hasItems -> cs.onSurface; else -> cs.onSurfaceVariant.copy(alpha = 0.55f) },
+                    color = if (sel) cs.onPrimary else cs.onSurfaceVariant,
                     modifier = Modifier
                         .clip(CircleShape)
                         .background(if (sel) cs.primary else Color.Transparent)
-                        .clickable {
-                            month = i
-                            val monthItems = items.filter { val d = it.date(); d.year == selectedYear && d.monthValue == i + 1 }
-                            if (monthItems.isNotEmpty()) onFilter("$m $selectedYear", monthItems)
-                        }
+                        .clickable { month = i }
                         .padding(horizontal = 6.dp, vertical = 3.dp),
                 )
             }
         }
-        val monthItems = remember(items, month, selectedYear) {
-            items.filter { val d = it.date(); d.year == selectedYear && d.monthValue == month + 1 }
+        val monthItems = remember(items, month, year) {
+            items.filter { val d = it.date(); d.year == year && d.monthValue == month + 1 }.take(40)
         }
         if (monthItems.isEmpty()) {
             Text("в этом месяце пока пусто", fontSize = 13.sp, color = cs.onSurfaceVariant, modifier = Modifier.padding(start = 22.dp, top = 6.dp))
-        } else {
-            Text(
-                "Открыть весь альбом · ${monthItems.size} файлов →",
-                fontSize = 13.sp, color = cs.onBackground,
-                modifier = Modifier.padding(start = 22.dp, top = 8.dp, bottom = 8.dp)
-                    .clickable { onFilter("${months[month]} $selectedYear", monthItems) },
-            )
-        }
+        } else ThumbRow(monthItems, s, onOpen)
 
         // ---- в этот день ----
         val today = LocalDate.now()

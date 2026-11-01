@@ -12,7 +12,6 @@ data class MediaItem(
     val dateMillis: Long,
     val bucket: String,
     val durationMs: Long,
-    val trashExpiresMillis: Long? = null,
 ) {
     /** Уникален среди фото и видео (id у них могут совпадать). */
     val key: String get() = (if (isVideo) "v" else "i") + id
