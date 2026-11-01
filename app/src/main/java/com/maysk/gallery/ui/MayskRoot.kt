@@ -148,7 +148,7 @@ private fun RootContent(vm: MainViewModel) {
                 ctx.contentResolver.delete(item.uri, null, null)
                 viewer = null
                 vm.reload()
-            } catch (_: SecurityException) {
+            } catch (e: SecurityException) {
                 Toast.makeText(ctx, "Не удалось удалить файл", Toast.LENGTH_SHORT).show()
             }
         }

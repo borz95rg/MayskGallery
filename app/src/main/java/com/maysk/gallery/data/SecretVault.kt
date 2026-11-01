@@ -89,7 +89,7 @@ class SecretVault(private val context: Context) {
         } ?: error("no stream")
         target.setLastModified(item.dateMillis)
         true
-    } catch (_: Exception) {
+    } catch (e: Exception) {
         false
     }
 
@@ -104,7 +104,10 @@ class SecretVault(private val context: Context) {
         return uri != null
     }
 
-    fun delete(item: MediaItem): Boolean = File(item.uri.path ?: return false).delete()
+    fun delete(item: MediaItem): Boolean {
+        val path = item.uri.path ?: return false
+        return File(path).delete()
+    }
 
     private companion object {
         const val K_HASH = "hash"

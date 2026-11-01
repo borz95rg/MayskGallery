@@ -37,7 +37,7 @@ class AiIndex(private val context: Context) {
                 map[k] = List(arr.length()) { arr.getString(it) }
             }
             map
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             emptyMap()
         }
     }
@@ -53,7 +53,7 @@ class AiIndex(private val context: Context) {
         val bmp = loadBitmap(item) ?: return@withContext null
         try {
             labeler.process(InputImage.fromBitmap(bmp, 0)).await().map { it.text }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             null
         } finally {
             bmp.recycle()
@@ -69,7 +69,7 @@ class AiIndex(private val context: Context) {
                 BitmapFactory.decodeStream(it, null, opts)
             }
         } else null
-    } catch (_: Exception) {
+    } catch (e: Exception) {
         null
     }
 

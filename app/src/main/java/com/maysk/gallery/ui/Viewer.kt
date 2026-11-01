@@ -290,7 +290,7 @@ private fun edit(ctx: Context, item: MediaItem) {
         .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
     try {
         ctx.startActivity(Intent.createChooser(i, "Изменить").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-    } catch (_: ActivityNotFoundException) {
+    } catch (e: ActivityNotFoundException) {
         android.widget.Toast.makeText(ctx, "Нет приложения для редактирования", android.widget.Toast.LENGTH_SHORT).show()
     }
 }
@@ -301,7 +301,7 @@ private fun playVideo(ctx: Context, item: MediaItem) {
         .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
     try {
         ctx.startActivity(i)
-    } catch (_: ActivityNotFoundException) {
+    } catch (e: ActivityNotFoundException) {
         android.widget.Toast.makeText(ctx, "Нет видеоплеера", android.widget.Toast.LENGTH_SHORT).show()
     }
 }

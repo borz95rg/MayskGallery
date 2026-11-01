@@ -66,7 +66,7 @@ enum class AiCategory(
     TRAVEL(
         "Путешествия", "✈",
         setOf("travel", "tourism", "vacation", "airplane", "aircraft", "landmark", "hotel", "airline", "airport", "tourist attraction"),
-        listOf("путешеств", "отпуск", "самолет", "самолёт", "отель", "туризм", "поездк");
+        listOf("путешеств", "отпуск", "самолет", "самолёт", "отель", "туризм", "поездк"),
     );
 
     fun matches(itemLabels: List<String>): Boolean =

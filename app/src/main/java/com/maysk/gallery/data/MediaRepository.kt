@@ -59,7 +59,7 @@ object MediaRepository {
                     )
                 }
             }
-        } catch (_: SecurityException) {
+        } catch (e: SecurityException) {
             // нет разрешения — вернём пустой список
         }
         return out

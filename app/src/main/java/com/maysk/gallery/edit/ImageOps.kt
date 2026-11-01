@@ -123,7 +123,7 @@ object ImageOps {
                 cr.openInputStream(uri)?.use {
                     ExifInterface(it).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
                 } ?: ExifInterface.ORIENTATION_NORMAL
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 ExifInterface.ORIENTATION_NORMAL
             }
             val m = Matrix()
@@ -136,9 +136,9 @@ object ImageOps {
                 else -> Unit
             }
             if (m.isIdentity) raw else Bitmap.createBitmap(raw, 0, 0, raw.width, raw.height, m, true)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             null
-        } catch (_: OutOfMemoryError) {
+        } catch (e: OutOfMemoryError) {
             null
         }
     }
