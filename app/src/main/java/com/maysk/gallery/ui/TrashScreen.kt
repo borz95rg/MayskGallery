@@ -1,7 +1,11 @@
 package com.maysk.gallery.ui
 
+import android.content.IntentSender
 import android.os.Build
 import android.provider.MediaStore
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -34,27 +38,43 @@ fun TrashScreen(s: UiSettings, onOpen: (List<MediaItem>, Int) -> Unit) {
     var items by remember { mutableStateOf(emptyList<MediaItem>()) }
     var pending by remember { mutableStateOf<MediaItem?>(null) }
     var refresh by remember { mutableStateOf(0) }
+    var message by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(refresh) {
         items = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             MediaRepository.loadTrashed(ctx)
         }
     }
+
+    val systemActionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        // Перечитываем MediaStore после подтверждения/отмены системного диалога.
+        refresh++
+        if (result.resultCode == android.app.Activity.RESULT_OK) message = null
+    }
+
+    fun launchSystemRequest(sender: IntentSender) {
+        systemActionLauncher.launch(IntentSenderRequest.Builder(sender).build())
+    }
+
     Column(Modifier.fillMaxSize()) {
         ScreenTitle("Корзина")
+        Text(
+            "В корзине: ${items.size}",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+        )
+
         if (Build.VERSION.SDK_INT < 30) {
             Text(
-                "Системная корзина доступна на Android 11 и новее. На этой версии Android удалённые файлы обрабатываются системой.",
+                "На этой версии Android системная корзина MediaStore не поддерживается. Удалённые ранее файлы здесь не отображаются.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(20.dp),
             )
         } else if (items.isEmpty()) {
             Text("Корзина пуста", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(20.dp))
         } else {
-            Text(
-                "Файлы временно хранятся в системной корзине Android. Срок окончательного удаления задаёт система.",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            )
             LazyVerticalGrid(
                 columns = GridCells.Fixed(s.columns.coerceIn(2, 4)),
                 modifier = Modifier.weight(1f),
@@ -67,12 +87,17 @@ fun TrashScreen(s: UiSettings, onOpen: (List<MediaItem>, Int) -> Unit) {
                         MediaThumb(item, s, false) { onOpen(items, items.indexOf(item)) }
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                             TextButton(onClick = {
-                                val values = android.content.ContentValues().apply {
-                                    put(MediaStore.MediaColumns.IS_TRASHED, 0)
+                                try {
+                                    // Используем системный запрос восстановления: Android сам
+                                    // показывает разрешение на изменение чужого MediaStore-файла.
+                                    val request = MediaStore.createTrashRequest(
+                                        ctx.contentResolver, listOf(item.uri), false
+                                    )
+                                    launchSystemRequest(request.intentSender)
+                                } catch (e: Exception) {
+                                    message = "Не удалось восстановить файл: ${e.message ?: "ошибка доступа"}"
                                 }
-                                ctx.contentResolver.update(item.uri, values, null, null)
-                                refresh++
-                            }) { Text("Вернуть") }
+                            }) { Text("Восстановить") }
                             TextButton(onClick = { pending = item }) { Text("Удалить") }
                         }
                         val remaining = item.expiresAtMillis - System.currentTimeMillis()
@@ -88,7 +113,11 @@ fun TrashScreen(s: UiSettings, onOpen: (List<MediaItem>, Int) -> Unit) {
                 }
             }
         }
+        message?.let {
+            Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(12.dp))
+        }
     }
+
     pending?.let { item ->
         AlertDialog(
             onDismissRequest = { pending = null },
@@ -96,9 +125,21 @@ fun TrashScreen(s: UiSettings, onOpen: (List<MediaItem>, Int) -> Unit) {
             text = { Text("Файл «${item.name}» будет удалён без возможности восстановления.") },
             confirmButton = {
                 TextButton(onClick = {
-                    ctx.contentResolver.delete(item.uri, null, null)
-                    pending = null
-                    refresh++
+                    try {
+                        if (Build.VERSION.SDK_INT >= 30) {
+                            val request = MediaStore.createDeleteRequest(ctx.contentResolver, listOf(item.uri))
+                            pending = null
+                            launchSystemRequest(request.intentSender)
+                        } else {
+                            ctx.contentResolver.delete(item.uri, null, null)
+                            pending = null
+                            refresh++
+                        }
+                    } catch (e: Exception) {
+                        message = "Не удалось удалить файл: ${e.message ?: "ошибка доступа"}"
+                        pending = null
+                        refresh++
+                    }
                 }) { Text("Удалить навсегда") }
             },
             dismissButton = { TextButton(onClick = { pending = null }) { Text("Отмена") } },

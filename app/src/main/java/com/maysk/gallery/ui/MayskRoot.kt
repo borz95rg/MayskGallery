@@ -136,14 +136,13 @@ private fun RootContent(vm: MainViewModel) {
             val pi = MediaStore.createTrashRequest(ctx.contentResolver, itemsToDelete.map { it.uri }, true)
             deleteLauncher.launch(IntentSenderRequest.Builder(pi.intentSender).build())
         } else {
-            try {
-                itemsToDelete.forEach { ctx.contentResolver.delete(it.uri, null, null) }
-                viewer = null
-                vm.reload()
-            } catch (e: SecurityException) {
-                Toast.makeText(ctx, "Не удалось удалить часть файлов. Проверьте разрешения Android.", Toast.LENGTH_LONG).show()
-                vm.reload()
-            }
+            // Не удаляем безвозвратно на Android 10 и старше: там нет API
+            // системной корзины MediaStore, поэтому безопаснее отменить действие.
+            Toast.makeText(
+                ctx,
+                "Корзина доступна начиная с Android 11. Файлы не удалены.",
+                Toast.LENGTH_LONG,
+            ).show()
         }
     }
 
@@ -237,8 +236,10 @@ private fun RootContent(vm: MainViewModel) {
                         }
                         8 -> TrashScreen(s) { list, i -> viewer = ViewerState(list, i) }
                         14 -> SelfieScreen(
+                            items = items,
+                            settings = s,
                             onBack = { tab = 5 },
-                            onSaved = { vm.reload() },
+                            onOpen = { list, index -> viewer = ViewerState(list, index) },
                         )
                         in 9..13 -> ExtraFeaturesScreen(
                             feature = when (tab) { 9 -> "memories"; 10 -> "duplicates"; 11 -> "collage"; 12 -> "slideshow"; else -> "map" },
