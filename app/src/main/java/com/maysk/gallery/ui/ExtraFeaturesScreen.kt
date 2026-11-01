@@ -142,7 +142,7 @@ private fun DuplicatesFeature(items: List<MediaItem>, s: UiSettings, enabled: Bo
 
 private data class CollageLayoutSpec(val id: Int, val title: String, val subtitle: String, val category: String)
 
-/** 100 curated collage compositions: 20 distinct layout families × 5 deliberate variations. */
+/** Offline preset layouts. Each preset is a distinct local composition; no network is used. */
 private fun collageRects(count: Int, layout: Int): List<android.graphics.RectF> {
     if (count <= 0) return emptyList()
     val family = Math.floorMod(layout, 20)
@@ -363,9 +363,10 @@ private fun CollageFeature(items: List<MediaItem>, s: UiSettings, onBack: () -> 
             "Треугольный ритм", "Портрет в центре", "Асимметричный угол", "Арт-мозаика"
         )
         val categories = listOf("Классика", "Журнальные", "Мозаика", "Асимметрия", "Истории", "Креатив", "Романтика", "Путешествия", "Портреты", "Геометрия")
-        (0 until 100).map { id ->
-            val family = id % families.size
-            val variation = id / families.size + 1
+        // Remove the previous 100-item pseudo-catalog: it repeated the same 20 geometries
+        // five times. Keep one clear preset per layout family instead.
+        (0 until families.size).map { id ->
+            val family = id
             val category = when (family) {
                 1,2,8 -> "Журнальные"
                 5,10 -> "Романтика"
@@ -376,9 +377,9 @@ private fun CollageFeature(items: List<MediaItem>, s: UiSettings, onBack: () -> 
                 14,17 -> "Портреты"
                 19 -> "Природа"
                 18 -> "Асимметрия"
-                else -> categories[(family + variation) % categories.size]
+                else -> categories[family % categories.size]
             }
-            CollageLayoutSpec(id, "${families[family]} · ${listOf("I","II","III","IV","V")[variation-1]}", "${photoCount} фото · пример композиции", category)
+            CollageLayoutSpec(id, families[family], "${photoCount} фото · офлайн-макет", category)
         }
     }
     val visibleLayouts = remember(layouts, selectedCategory) { if (selectedCategory == "Все") layouts else layouts.filter { it.category == selectedCategory } }
