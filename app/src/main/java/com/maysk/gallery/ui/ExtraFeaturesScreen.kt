@@ -142,69 +142,187 @@ private fun DuplicatesFeature(items: List<MediaItem>, s: UiSettings, enabled: Bo
 
 private data class CollageLayoutSpec(val id: Int, val title: String, val subtitle: String, val category: String)
 
-/** 120 editable layouts. Each layout is generated from a distinct composition family and variation. */
+/** 100 curated collage compositions: 20 distinct layout families × 5 deliberate variations. */
 private fun collageRects(count: Int, layout: Int): List<android.graphics.RectF> {
     if (count <= 0) return emptyList()
-    val family = Math.floorMod(layout, 15)
-    val variant = Math.floorDiv(layout, 15)
-    val gap = .008f + (variant % 4) * .004f
-    fun grid(n: Int, cols: Int, reverse: Boolean = false, offset: Int = 0): List<android.graphics.RectF> {
+    val family = Math.floorMod(layout, 20)
+    val variant = Math.floorDiv(layout, 20).coerceIn(0, 4)
+    val gap = .012f + variant * .003f
+    fun r(l: Float, t: Float, rr: Float, b: Float) = android.graphics.RectF(l, t, rr, b)
+    fun grid(n: Int, cols: Int, rowsOffset: Int = 0): List<android.graphics.RectF> {
+        if (n <= 0) return emptyList()
         val rows = (n + cols - 1) / cols
         return (0 until n).map { i ->
-            val j = if (reverse) n - 1 - i else i
-            val col = (j + offset) % cols
+            val j = (i + rowsOffset) % n
             val row = j / cols
-            val cellW = 1f / cols
-            val cellH = 1f / rows
-            android.graphics.RectF(col * cellW + gap, row * cellH + gap, (col + 1) * cellW - gap, (row + 1) * cellH - gap)
+            val col = j % cols
+            val w = 1f / cols
+            val h = 1f / rows
+            r(col * w + gap, row * h + gap, (col + 1) * w - gap, (row + 1) * h - gap)
         }
     }
-    if (count == 2) {
-        return when (family % 6) {
-            0 -> listOf(android.graphics.RectF(gap, gap, .5f-gap, 1f-gap), android.graphics.RectF(.5f+gap, gap, 1f-gap, 1f-gap))
-            1 -> listOf(android.graphics.RectF(gap, gap, 1f-gap, .5f-gap), android.graphics.RectF(gap, .5f+gap, 1f-gap, 1f-gap))
-            2 -> listOf(android.graphics.RectF(gap, gap, .64f-gap, 1f-gap), android.graphics.RectF(.66f+gap, gap, 1f-gap, 1f-gap))
-            3 -> listOf(android.graphics.RectF(gap, gap, 1f-gap, .64f-gap), android.graphics.RectF(gap, .66f+gap, 1f-gap, 1f-gap))
-            4 -> listOf(android.graphics.RectF(gap, gap, .5f-gap, .5f-gap), android.graphics.RectF(.5f+gap, .5f+gap, 1f-gap, 1f-gap))
-            else -> listOf(android.graphics.RectF(.18f, gap, .82f, .48f-gap), android.graphics.RectF(.18f, .52f+gap, .82f, 1f-gap))
+    fun heroLeft(): List<android.graphics.RectF> {
+        val split = (.52f + variant * .035f).coerceAtMost(.66f)
+        val side = 1f - split
+        return listOf(r(gap, gap, split-gap, 1f-gap)) + (0 until count-1).map { i ->
+            r(split+gap, i.toFloat()/(count-1)+gap, 1f-gap, (i+1f)/(count-1)-gap)
         }
     }
-    val rest = count - 1
-    return when (family) {
-        0 -> grid(count, if (count < 5) 2 else 3, variant % 2 == 1, variant % 3)
-        1 -> listOf(android.graphics.RectF(gap, gap, .62f-gap, 1f-gap)) + (0 until rest).map { i -> android.graphics.RectF(.64f+gap, i.toFloat()/rest+gap, 1f-gap, (i+1f)/rest-gap) }
-        2 -> listOf(android.graphics.RectF(.38f+gap, gap, 1f-gap, 1f-gap)) + (0 until rest).map { i -> android.graphics.RectF(gap, i.toFloat()/rest+gap, .36f-gap, (i+1f)/rest-gap) }
-        3 -> listOf(android.graphics.RectF(gap, gap, 1f-gap, .60f-gap)) + grid(rest, if (rest <= 2) 2 else 3).map { r -> android.graphics.RectF(r.left, .62f+r.top*.38f, r.right, .62f+r.bottom*.38f) }
-        4 -> grid(rest, if (rest <= 2) 2 else 3).map { r -> android.graphics.RectF(r.left, r.top*.38f, r.right, r.bottom*.38f) } + listOf(android.graphics.RectF(gap, .40f+gap, 1f-gap, 1f-gap))
-        5 -> {
-            val result = mutableListOf(android.graphics.RectF(.25f, .22f, .75f, .78f))
-            val ring = listOf(android.graphics.RectF(0f,0f,.24f,.21f), android.graphics.RectF(.26f,0f,.74f,.20f), android.graphics.RectF(.76f,0f,1f,.21f), android.graphics.RectF(0f,.23f,.23f,.77f), android.graphics.RectF(.77f,.23f,1f,.77f), android.graphics.RectF(0f,.79f,.24f,1f), android.graphics.RectF(.26f,.80f,.74f,1f), android.graphics.RectF(.76f,.79f,1f,1f))
-            result + ring.take(rest)
+    fun heroRight(): List<android.graphics.RectF> = heroLeft().map { r(1f-it.right, it.top, 1f-it.left, it.bottom) }
+    fun heroTop(): List<android.graphics.RectF> {
+        val h = (.42f + variant*.035f).coerceAtMost(.58f)
+        return listOf(r(gap,gap,1f-gap,h-gap)) + grid(count-1, if (count <= 3) 2 else 3).map { r(it.left,h+it.top*(1f-h),it.right,h+it.bottom*(1f-h)) }
+    }
+    fun heroBottom(): List<android.graphics.RectF> = heroTop().map { r(it.left,1f-it.bottom,it.right,1f-it.top) }
+    val result = when (family) {
+        0 -> grid(count, if (count <= 4) 2 else 3, variant % 3)
+        1 -> heroLeft()
+        2 -> heroRight()
+        3 -> heroTop()
+        4 -> heroBottom()
+        5 -> { // cinematic centre with small surrounding frames
+            val hero = r(.20f+variant*.015f,.20f,.80f-variant*.015f,.80f)
+            val ring = listOf(r(0f,0f,.30f,.18f),r(.35f,0f,.65f,.18f),r(.70f,0f,1f,.18f),r(0f,.22f,.16f,.48f),r(.84f,.22f,1f,.48f),r(0f,.52f,.16f,.78f),r(.84f,.52f,1f,.78f),r(0f,.82f,.30f,1f),r(.35f,.82f,.65f,1f),r(.70f,.82f,1f,1f))
+            listOf(hero) + ring.take(count-1)
         }
-        6 -> { val cols = if (variant % 2 == 0) 2 else 3; grid(count, cols, variant % 3 == 1, variant % 2) }
-        7 -> { val cols = if (count < 5) count else 3; grid(count, cols, variant % 2 == 0, variant % 3) }
-        8 -> { val result = mutableListOf<android.graphics.RectF>(); val heroH = .42f; result += android.graphics.RectF(gap,gap,1f-gap,heroH-gap); result + grid(rest, 2, variant % 2 == 1).map { r -> android.graphics.RectF(r.left, heroH+r.top*(1f-heroH), r.right, heroH+r.bottom*(1f-heroH)) } }
-        9 -> { val cols = if (count <= 4) 2 else 3; grid(count, cols, variant % 2 == 0, variant % 3) }
-        10 -> { val rows = count; (0 until count).map { i -> val top = i.toFloat()/rows; android.graphics.RectF(if (i%2==0) gap else .18f, top+gap, if (i%2==0) .82f else 1f-gap, (i+1f)/rows-gap) } }
-        11 -> {
-            val top = listOf(android.graphics.RectF(gap,gap,.49f-gap,.48f-gap), android.graphics.RectF(.51f+gap,gap,1f-gap,.48f-gap))
-            val bottomCount = count - 2
-            top + grid(bottomCount, if (bottomCount <= 2) 2 else 3, variant % 2 == 0).map { r -> android.graphics.RectF(r.left, .52f+r.top*.48f, r.right, .52f+r.bottom*.48f) }
+        6 -> { // film-strip: large middle image, thin frames above and below
+            val middle = r(gap,.22f+variant*.02f,1f-gap,.78f-variant*.02f)
+            val n = count-1; val topN = (n+1)/2; val bottomN = n-topN
+            listOf(middle) + (0 until topN).map { i -> r(i.toFloat()/topN+gap,gap,(i+1f)/topN-gap,.18f) } + (0 until bottomN).map { i -> r(i.toFloat()/bottomN+gap,.82f,(i+1f)/bottomN-gap,1f-gap) }
         }
-        12 -> { val base = grid(count, 2, variant%2==1); base.mapIndexed { i,r -> if (i%2==0) android.graphics.RectF(r.left,r.top*.92f,r.right,r.bottom*.92f) else android.graphics.RectF(r.left,r.top*.92f+.08f,r.right,r.bottom*.92f+.08f) } }
-        13 -> {
-            val result = mutableListOf(android.graphics.RectF(gap,.19f,1f-gap,.81f))
-            val perRow = (rest + 1) / 2
-            result + (0 until rest).map { i ->
-                val slot = i / 2
-                val left = slot.toFloat() / perRow
-                val right = (slot + 1f) / perRow
-                if (i % 2 == 0) android.graphics.RectF(left+gap, gap, right-gap, .16f-gap)
-                else android.graphics.RectF(left+gap, .84f+gap, right-gap, 1f-gap)
+        7 -> { // honeycomb-inspired offset mosaic
+            val cols = if (count <= 3) 2 else 3
+            grid(count, cols, variant % 2).mapIndexed { i, q -> r((q.left + if ((i/cols)%2==1) .035f else 0f).coerceAtMost(.75f), q.top, (q.right + if ((i/cols)%2==1) .035f else 0f).coerceAtMost(1f), q.bottom) }
+        }
+        8 -> { // editorial 2-up header with varied lower cards
+            val topH = .34f + variant*.025f
+            val first = r(gap,gap,.58f-gap,topH-gap)
+            val second = r(.60f+gap,gap,1f-gap,topH-gap)
+            listOf(first,second) + grid(count-2, if (count <= 4) 2 else 3).map { r(it.left,topH+it.top*(1f-topH),it.right,topH+it.bottom*(1f-topH)) }
+        }
+        9 -> { // staggered scrapbook rows
+            val rows = count
+            (0 until count).map { i ->
+                val h=1f/rows
+                val shift=if ((i+variant)%2==0) .02f+variant*.008f else .12f+variant*.008f
+                r((shift).coerceAtMost(.22f),i*h+gap,(1f-shift*.45f), (i+1f)*h-gap)
             }
         }
-        else -> grid(count, if (variant%2==0) 2 else 3, variant%2==1, variant%4)
-    }.take(count).map { r -> android.graphics.RectF(r.left.coerceIn(0f,1f), r.top.coerceIn(0f,1f), r.right.coerceIn(0f,1f), r.bottom.coerceIn(0f,1f)) }
+        10 -> { // circle-gallery arrangement represented as square cells, circle mask applied in renderer
+            grid(count, if (count <= 4) 2 else 3, variant%2).mapIndexed { i,q ->
+                val scale=if(i==0) 1f else .94f
+                val cx=(q.left+q.right)/2; val cy=(q.top+q.bottom)/2
+                val w=q.width()*scale; val h=q.height()*scale
+                r(cx-w/2,cy-h/2,cx+w/2,cy+h/2)
+            }
+        }
+        11 -> { // alternating magazine columns
+            val leftW=.38f+variant*.025f
+            (0 until count).map { i ->
+                val col=i%2; val row=i/2; val rows=(count+1)/2
+                val h=1f/rows
+                if(col==0) r(gap,row*h+gap,leftW-gap,(row+1f)*h-gap)
+                else r(leftW+gap,row*h+gap,1f-gap,(row+1f)*h-gap)
+            }
+        }
+        12 -> { // panorama bands
+            val heroH=.30f+variant*.025f
+            listOf(r(gap,gap,1f-gap,heroH-gap)) + grid(count-1,2).map { r(it.left,heroH+it.top*(1f-heroH),it.right,heroH+it.bottom*(1f-heroH)) }
+        }
+        13 -> { // diagonal-flow / offset cards
+            val base=grid(count,2,variant%2)
+            base.mapIndexed { i,q ->
+                val dx=if(i%2==0) -.025f else .025f
+                r((q.left+dx).coerceAtLeast(gap),(q.top+if(i%2==0) .025f else 0f).coerceAtMost(.95f),(q.right+dx).coerceAtMost(1f-gap),(q.bottom+if(i%2==0) .025f else 0f).coerceAtMost(1f-gap))
+            }
+        }
+        14 -> { // central column with side stories
+            val heroW=.42f+variant*.02f
+            val sideW=(1f-heroW)/2f
+            val hero=r(sideW+gap,gap,sideW+heroW-gap,1f-gap)
+            val sides=(0 until count-1).map { i ->
+                val left=i%2==0; val row=i/2; val rows=((count-1)+1)/2; val h=1f/rows
+                if(left) r(gap,row*h+gap,sideW-gap,(row+1f)*h-gap) else r(sideW+heroW+gap,row*h+gap,1f-gap,(row+1f)*h-gap)
+            }
+            listOf(hero)+sides
+        }
+        15 -> { // vertical photo-story with alternating inset
+            (0 until count).map { i ->
+                val h=1f/count; val inset=if(i%2==0) .02f+variant*.01f else .15f+variant*.012f
+                r(inset,i*h+gap,1f-inset,(i+1f)*h-gap)
+            }
+        }
+        16 -> { // triangle-inspired diagonal rhythm
+            val cols=if(count<=4) 2 else 3
+            grid(count,cols).mapIndexed { i,q ->
+                val shift=if(i%2==0) .025f else -.025f
+                r((q.left+shift).coerceAtLeast(gap),q.top,(q.right+shift).coerceAtMost(1f-gap),q.bottom)
+            }
+        }
+        17 -> { // large portrait + two small side rails
+            val hero=r(.22f+variant*.015f,gap,.78f-variant*.015f,1f-gap)
+            val rail=(0 until count-1).map { i ->
+                val side=i%2; val row=i/2; val rows=((count-1)+1)/2; val h=1f/rows
+                if(side==0) r(gap,row*h+gap,.19f,(row+1f)*h-gap) else r(.81f,row*h+gap,1f-gap,(row+1f)*h-gap)
+            }
+            listOf(hero)+rail
+        }
+        18 -> { // asymmetrical gallery with hero at varying corner
+            val heroW=.56f+variant*.025f; val heroH=.56f+variant*.025f
+            val corner=variant%4
+            val hero=when(corner){0->r(gap,gap,heroW,heroH);1->r(1f-heroW,gap,1f-gap,heroH);2->r(gap,1f-heroH,heroW,1f-gap);else->r(1f-heroW,1f-heroH,1f-gap,1f-gap)}
+            val rest=grid(count-1,2,variant%2).map { q ->
+                val x=if(corner%2==0) .48f else 0f; val y=if(corner<2) .48f else 0f
+                r((q.left*.48f+x).coerceIn(0f,1f), (q.top*.48f+y).coerceIn(0f,1f), (q.right*.48f+x).coerceIn(0f,1f), (q.bottom*.48f+y).coerceIn(0f,1f))
+            }
+            listOf(hero)+rest
+        }
+        else -> { // clean editorial mosaic with a shifting hero tile
+            val cols=if(count<5) 2 else 3
+            val base=grid(count,cols,variant%2)
+            base.mapIndexed { i,q -> if(i==variant%count) r(q.left,q.top*.88f,q.right,q.bottom*.88f) else q }
+        }
+    }
+    return result.take(count).map { q ->
+        android.graphics.RectF(q.left.coerceIn(0f, .98f), q.top.coerceIn(0f,.98f), q.right.coerceIn(.02f,1f), q.bottom.coerceIn(.02f,1f))
+    }
+}
+
+private fun collageMask(layout: Int): Int = when (Math.floorMod(layout, 20)) {
+    5 -> 5  // heart-inspired romantic frames
+    7 -> 2  // honeycomb hexagons
+    10 -> 1 // circular gallery
+    13 -> 3 // diamond mosaic
+    16 -> 4 // triangular art collage
+    else -> 0 // editorial rounded rectangles
+}
+
+private fun collageAndroidPath(rect: android.graphics.RectF, mask: Int): android.graphics.Path {
+    val p = android.graphics.Path()
+    val l=rect.left; val t=rect.top; val r=rect.right; val b=rect.bottom
+    when(mask) {
+        1 -> p.addOval(rect, android.graphics.Path.Direction.CW)
+        2 -> { p.moveTo((l+r)/2,t); p.lineTo(r,t+(b-t)*.25f); p.lineTo(r,b-(b-t)*.25f); p.lineTo((l+r)/2,b); p.lineTo(l,b-(b-t)*.25f); p.lineTo(l,t+(b-t)*.25f); p.close() }
+        3 -> { p.moveTo((l+r)/2,t); p.lineTo(r,(t+b)/2); p.lineTo((l+r)/2,b); p.lineTo(l,(t+b)/2); p.close() }
+        4 -> { p.moveTo((l+r)/2,t); p.lineTo(r,b); p.lineTo(l,b); p.close() }
+        5 -> { p.moveTo((l+r)/2,t); p.cubicTo(r,t,r,(t+b)/2,(l+r)/2,b); p.cubicTo(l,(t+b)/2,l,t,(l+r)/2,t); p.close() }
+        else -> p.addRoundRect(rect, 24f, 24f, android.graphics.Path.Direction.CW)
+    }
+    return p
+}
+
+private fun collageComposeShape(layout: Int): androidx.compose.ui.graphics.Shape = androidx.compose.foundation.shape.GenericShape { size, _ ->
+    val path = androidx.compose.ui.graphics.Path()
+    val w=size.width; val h=size.height
+    when(collageMask(layout)) {
+        1 -> path.addOval(androidx.compose.ui.geometry.Rect(0f,0f,w,h))
+        2 -> { path.moveTo(w*.5f,0f); path.lineTo(w,h*.25f); path.lineTo(w,h*.75f); path.lineTo(w*.5f,h); path.lineTo(0f,h*.75f); path.lineTo(0f,h*.25f); path.close() }
+        3 -> { path.moveTo(w*.5f,0f); path.lineTo(w,h*.5f); path.lineTo(w*.5f,h); path.lineTo(0f,h*.5f); path.close() }
+        4 -> { path.moveTo(w*.5f,0f); path.lineTo(w,h); path.lineTo(0f,h); path.close() }
+        5 -> { path.moveTo(w*.5f,0f); path.cubicTo(w,0f,w,h*.5f,w*.5f,h); path.cubicTo(0f,h*.5f,0f,0f,w*.5f,0f); path.close() }
+        else -> path.addRoundRect(androidx.compose.ui.geometry.RoundRect(0f,0f,w,h,androidx.compose.ui.geometry.CornerRadius(14f,14f)))
+    }
+    addPath(path)
 }
 
 @Composable
@@ -238,12 +356,29 @@ private fun CollageFeature(items: List<MediaItem>, s: UiSettings, onBack: () -> 
         if (granted) saveCurrentCollage() else message = "Для сохранения коллажа нужно разрешить доступ к файлам."
     }
     val layouts = remember(photoCount) {
-        val families = listOf("Классическая сетка", "Главный кадр слева", "Главный кадр справа", "Большое фото сверху", "Большое фото снизу", "Центральная композиция", "Журнальная сетка", "Мозаика", "Фотоистория", "Асимметрия", "Вертикальная лента", "Редакционный стиль", "Динамика", "Киноплёнка", "Свободная композиция")
-        val categories = listOf("Классика", "Журнальные", "Мозаика", "Асимметрия", "Истории", "Креатив")
-        (0 until 120).map { id ->
+        val families = listOf(
+            "Редакционная сетка", "Обложка слева", "Обложка справа", "Панорама сверху", "Панорама снизу",
+            "Центральная история", "Киноплёнка", "Соты", "Журнал", "Скрапбук", "Круговая галерея",
+            "Две колонки", "Путевой дневник", "Динамика", "Центральный портрет", "Фото-лента",
+            "Треугольный ритм", "Портрет в центре", "Асимметричный угол", "Арт-мозаика"
+        )
+        val categories = listOf("Классика", "Журнальные", "Мозаика", "Асимметрия", "Истории", "Креатив", "Романтика", "Путешествия", "Портреты", "Геометрия")
+        (0 until 100).map { id ->
             val family = id % families.size
             val variation = id / families.size + 1
-            CollageLayoutSpec(id, "${families[family]} №$variation", "${photoCount} фото · вариант $variation", categories[(family + variation) % categories.size])
+            val category = when (family) {
+                1,2,8 -> "Журнальные"
+                5,10 -> "Романтика"
+                6,15 -> "Истории"
+                7,13,16 -> "Геометрия"
+                9 -> "Семья"
+                3,4,12 -> "Путешествия"
+                14,17 -> "Портреты"
+                19 -> "Природа"
+                18 -> "Асимметрия"
+                else -> categories[(family + variation) % categories.size]
+            }
+            CollageLayoutSpec(id, "${families[family]} · ${listOf("I","II","III","IV","V")[variation-1]}", "${photoCount} фото · авторский макет", category)
         }
     }
     val visibleLayouts = remember(layouts, selectedCategory) { if (selectedCategory == "Все") layouts else layouts.filter { it.category == selectedCategory } }
@@ -267,7 +402,7 @@ private fun CollageFeature(items: List<MediaItem>, s: UiSettings, onBack: () -> 
                     TextButton(onClick = { stage = 0 }) { Text("← Количество") }
                     Text("$photoCount фотографий", color = MaterialTheme.colorScheme.primary)
                 }
-                Text("120 шаблонов для $photoCount фотографий · выбери подходящую композицию", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                Text("100 авторских шаблонов для $photoCount фотографий · выбери стиль и композицию", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     (listOf("Все") + layouts.map { it.category }.distinct()).forEach { category ->
                         TextButton(onClick = { selectedCategory = category }) {
@@ -357,15 +492,22 @@ private fun CollageFeature(items: List<MediaItem>, s: UiSettings, onBack: () -> 
 
 @Composable
 private fun TemplateSketch(count: Int, layout: Int, modifier: Modifier = Modifier) {
-    androidx.compose.foundation.Canvas(modifier.clip(RoundedCornerShape(12.dp)).background(Color.Black)) {
+    val palette = listOf(Color(0xFFB99A78), Color(0xFF8EA9B8), Color(0xFFC58E88), Color(0xFF9A8FB5), Color(0xFF879B83))
+    val accent = palette[Math.floorMod(layout / 20 + layout % 5, palette.size)]
+    androidx.compose.foundation.Canvas(modifier.clip(RoundedCornerShape(12.dp)).background(Color(0xFF171717))) {
         val rects = collageRects(count, layout)
         rects.forEachIndexed { index, r ->
-            drawRoundRect(
-                color = if (index == 0) Color(0xFF8FA9C5) else Color(0xFF48596B),
-                topLeft = androidx.compose.ui.geometry.Offset(r.left * size.width, r.top * size.height),
-                size = androidx.compose.ui.geometry.Size(r.width() * size.width, r.height() * size.height),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(8.dp.toPx()),
-            )
+            val target = androidx.compose.ui.geometry.Rect(r.left * size.width, r.top * size.height, r.right * size.width, r.bottom * size.height)
+            val path = when (collageMask(layout)) {
+                1 -> androidx.compose.ui.graphics.Path().apply { addOval(target) }
+                2 -> androidx.compose.ui.graphics.Path().apply { moveTo(target.center.x,target.top); lineTo(target.right,target.top+target.height*.25f); lineTo(target.right,target.bottom-target.height*.25f); lineTo(target.center.x,target.bottom); lineTo(target.left,target.bottom-target.height*.25f); lineTo(target.left,target.top+target.height*.25f); close() }
+                3 -> androidx.compose.ui.graphics.Path().apply { moveTo(target.center.x,target.top); lineTo(target.right,target.center.y); lineTo(target.center.x,target.bottom); lineTo(target.left,target.center.y); close() }
+                4 -> androidx.compose.ui.graphics.Path().apply { moveTo(target.center.x,target.top); lineTo(target.right,target.bottom); lineTo(target.left,target.bottom); close() }
+                5 -> androidx.compose.ui.graphics.Path().apply { moveTo(target.center.x,target.top); cubicTo(target.right,target.top,target.right,target.center.y,target.center.x,target.bottom); cubicTo(target.left,target.center.y,target.left,target.top,target.center.x,target.top); close() }
+                else -> androidx.compose.ui.graphics.Path().apply { addRoundRect(androidx.compose.ui.geometry.RoundRect(target, androidx.compose.ui.geometry.CornerRadius(10.dp.toPx()))) }
+            }
+            drawPath(path, if (index == 0) accent else accent.copy(alpha = .48f))
+            drawPath(path, Color.White.copy(alpha = .10f), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.dp.toPx()))
         }
     }
 }
@@ -380,7 +522,7 @@ private fun CollageComposition(items: List<MediaItem>, layout: Int, caption: Str
                 model = item.uri, contentDescription = item.name,
                 modifier = Modifier.offset(x = maxWidth * r.left, y = maxHeight * r.top)
                     .size(width = maxWidth * r.width(), height = maxHeight * r.height())
-                    .padding(2.dp).clip(RoundedCornerShape(7.dp)),
+                    .padding(2.dp).clip(collageComposeShape(layout)),
                 contentScale = androidx.compose.ui.layout.ContentScale.Crop,
             )
         }
@@ -410,7 +552,7 @@ private fun saveCollage(context: android.content.Context, items: List<MediaItem>
         val outputBitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         bitmap = outputBitmap
         val canvas = Canvas(outputBitmap)
-        canvas.drawColor(android.graphics.Color.BLACK)
+        canvas.drawColor(android.graphics.Color.rgb(24, 23, 25))
         val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
         val rects = collageRects(items.size, layout)
         var decodedCount = 0
@@ -430,7 +572,13 @@ private fun saveCollage(context: android.content.Context, items: List<MediaItem>
                 val h = (source.width / targetRatio).toInt().coerceAtMost(source.height)
                 android.graphics.Rect(0, (source.height - h) / 2, source.width, (source.height + h) / 2)
             }
+            val saveCount = canvas.save()
+            val normalized = android.graphics.RectF(
+                dst.left.toFloat(), dst.top.toFloat(), dst.right.toFloat(), dst.bottom.toFloat()
+            )
+            canvas.clipPath(collageAndroidPath(normalized, collageMask(layout)))
             canvas.drawBitmap(source, src, dst, paint)
+            canvas.restoreToCount(saveCount)
             source.recycle()
             decodedCount++
         }
