@@ -101,7 +101,7 @@ fun SecretTab(
     LaunchedEffect(albums) { if (selectedAlbum != "Все" && selectedAlbum !in albums) selectedAlbum = "Все" }
 
     Column(Modifier.fillMaxSize()) {
-        ScreenTitle("Приватные альбомы")
+        ScreenTitle("Сейф")
         MediaGrid(
             items = visibleItems,
             s = s,

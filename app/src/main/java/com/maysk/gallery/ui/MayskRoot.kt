@@ -208,12 +208,12 @@ private fun RootContent(vm: MainViewModel) {
                         ) { list, i -> viewer = ViewerState(list, i, secret = true) }
                         5 -> HomeScreen(
                             items = items,
-                            secretCount = secretItems.size,
                             s = s,
                             onOpen = { list, i -> viewer = ViewerState(list, i) },
                             onFilter = { t, list -> filter = t to list; tab = 7 },
                             onTab = { tab = it },
                             onPick = pickCover,
+                            onSelfie = { tab = 14 },
                         )
                         6 -> {
                             val videos = items.filter { it.isVideo }
@@ -236,6 +236,10 @@ private fun RootContent(vm: MainViewModel) {
                             }
                         }
                         8 -> TrashScreen(s) { list, i -> viewer = ViewerState(list, i) }
+                        14 -> SelfieScreen(
+                            onBack = { tab = 5 },
+                            onSaved = { vm.reload() },
+                        )
                         in 9..13 -> ExtraFeaturesScreen(
                             feature = when (tab) { 9 -> "memories"; 10 -> "duplicates"; 11 -> "collage"; 12 -> "slideshow"; else -> "map" },
                             items = items,
@@ -249,7 +253,7 @@ private fun RootContent(vm: MainViewModel) {
             }
         }
 
-        if (viewer == null && editing == null) {
+        if (viewer == null && editing == null && tab != 14) {
             OriginalDock(
                 selected = when (tab) { 0 -> 0; 6 -> 2; else -> 1 },
                 modifier = Modifier.align(Alignment.BottomCenter),

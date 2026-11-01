@@ -402,7 +402,11 @@ private fun CollageFeature(items: List<MediaItem>, s: UiSettings, onBack: () -> 
                     TextButton(onClick = { stage = 0 }) { Text("← Количество") }
                     Text("$photoCount фотографий", color = MaterialTheme.colorScheme.primary)
                 }
+<<<<<<< HEAD
                 Text("Выбери готовую композицию. В превью показаны фотографии из твоей галереи.", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+=======
+                Text("Готовые композиции для $photoCount фотографий · выбери подходящий макет", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+>>>>>>> 0c4bfe998b133ee9bc0c895b32b89b89408673ce
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     (listOf("Все") + layouts.map { it.category }.distinct()).forEach { category ->
                         TextButton(onClick = { selectedCategory = category }) {
@@ -413,7 +417,11 @@ private fun CollageFeature(items: List<MediaItem>, s: UiSettings, onBack: () -> 
                 LazyVerticalGrid(columns = GridCells.Fixed(2), modifier = Modifier.weight(1f), contentPadding = PaddingValues(12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(visibleLayouts, key = { it.id }) { spec ->
                         Column(Modifier.clip(RoundedCornerShape(18.dp)).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .55f)).clickable { layout = spec.id; stage = 2 }.padding(10.dp)) {
+<<<<<<< HEAD
                             CollageTemplatePreview(items, photoCount, spec.id, Modifier.fillMaxWidth().aspectRatio(1.2f))
+=======
+                            TemplatePhotoPreview(items, photoCount, spec.id, Modifier.fillMaxWidth().aspectRatio(1.2f))
+>>>>>>> 0c4bfe998b133ee9bc0c895b32b89b89408673ce
                             Text(spec.title, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(top = 8.dp))
                             Text(spec.subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                         }
@@ -491,18 +499,43 @@ private fun CollageFeature(items: List<MediaItem>, s: UiSettings, onBack: () -> 
 }
 
 @Composable
+<<<<<<< HEAD
 private fun CollageTemplatePreview(
     galleryItems: List<MediaItem>,
+=======
+private fun TemplatePhotoPreview(
+    galleryPhotos: List<MediaItem>,
+>>>>>>> 0c4bfe998b133ee9bc0c895b32b89b89408673ce
     count: Int,
     layout: Int,
     modifier: Modifier = Modifier,
 ) {
+<<<<<<< HEAD
     // Each card uses real local photos from the device gallery, clipped to the
     // exact same geometry that is used by the collage renderer and exporter.
+=======
+    // Карточки каталога показывают реальные снимки из галереи пользователя,
+    // а не цветные геометрические заглушки. Если фото ещё нет — объясняем это явно.
+    if (galleryPhotos.isEmpty()) {
+        Box(
+            modifier.clip(RoundedCornerShape(12.dp)).background(Color(0xFF202020)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                "Добавь фотографии в галерею, чтобы увидеть макет",
+                color = Color.White.copy(alpha = .78f),
+                fontSize = 12.sp,
+                modifier = Modifier.padding(12.dp),
+            )
+        }
+        return
+    }
+>>>>>>> 0c4bfe998b133ee9bc0c895b32b89b89408673ce
     androidx.compose.foundation.layout.BoxWithConstraints(
         modifier.clip(RoundedCornerShape(12.dp)).background(Color(0xFF171717))
     ) {
         val rects = collageRects(count, layout)
+<<<<<<< HEAD
         rects.forEachIndexed { index, r ->
             val tileModifier = Modifier
                 .offset(x = maxWidth * r.left, y = maxHeight * r.top)
@@ -525,6 +558,21 @@ private fun CollageTemplatePreview(
                     Text("${index + 1}", color = Color.White.copy(alpha = .7f), fontSize = 12.sp)
                 }
             }
+=======
+        val previewPhotos = (0 until count).map { galleryPhotos[it % galleryPhotos.size] }
+        previewPhotos.forEachIndexed { index, item ->
+            val r = rects[index]
+            AsyncImage(
+                model = item.uri,
+                contentDescription = "Пример фотографии ${index + 1}",
+                modifier = Modifier
+                    .offset(x = maxWidth * r.left, y = maxHeight * r.top)
+                    .size(width = maxWidth * r.width(), height = maxHeight * r.height())
+                    .padding(2.dp)
+                    .clip(collageComposeShape(layout)),
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+            )
+>>>>>>> 0c4bfe998b133ee9bc0c895b32b89b89408673ce
         }
     }
 }
