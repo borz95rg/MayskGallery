@@ -1,0 +1,14 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- солнце -->
+    <path android:fillColor="#FFC83D" android:pathData="M64,34m-9,0a9,9 0,1 1,18 0a9,9 0,1 1,-18 0" />
+    <!-- дальняя гора -->
+    <path android:fillColor="#B84DFF" android:pathData="M54,44 L80,78 L28,78 Z" />
+    <!-- ближняя гора -->
+    <path android:fillColor="#FF3D9A" android:pathData="M40,52 L66,82 L14,82 Z" />
+    <!-- снежная шапка -->
+    <path android:fillColor="#FFFFFF" android:pathData="M40,52 L47,60 L43,59 L40,62 L36,59 L33,60 Z" />
+</vector>

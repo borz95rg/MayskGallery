@@ -1,0 +1,14 @@
+*.iml
+.gradle/
+.idea/
+local.properties
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.jks
+*.keystore
+# встроенный ключ подписи нужен, чтобы обновления ставились поверх друг друга
+!app/maysk-debug.keystore
