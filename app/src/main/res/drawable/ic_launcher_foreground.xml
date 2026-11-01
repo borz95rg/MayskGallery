@@ -1,14 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <!-- солнце -->
-    <path android:fillColor="#FFC83D" android:pathData="M64,34m-9,0a9,9 0,1 1,18 0a9,9 0,1 1,-18 0" />
-    <!-- дальняя гора -->
-    <path android:fillColor="#B84DFF" android:pathData="M54,44 L80,78 L28,78 Z" />
-    <!-- ближняя гора -->
-    <path android:fillColor="#FF3D9A" android:pathData="M40,52 L66,82 L14,82 Z" />
-    <!-- снежная шапка -->
-    <path android:fillColor="#FFFFFF" android:pathData="M40,52 L47,60 L43,59 L40,62 L36,59 L33,60 Z" />
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+
+    <!-- волнистая «капля» с космосом внутри и светящейся рамкой -->
+    <path
+        android:pathData="M30,40C28,30 38,24 48,27C56,29 60,22 68,26C78,31 82,44 77,54C73,63 80,72 68,80L40,80C32,72 36,64 30,58C26,52 31,46 30,40Z"
+        android:fillColor="#FF0D0A24"
+        android:strokeWidth="1.6">
+        <aapt:attr name="android:strokeColor">
+            <gradient android:type="linear" android:startX="28" android:startY="26"
+                android:endX="80" android:endY="80">
+                <item android:offset="0" android:color="#FF6FE3F0" />
+                <item android:offset="1" android:color="#FFC27CFF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- звёздочки -->
+    <path android:pathData="M38,44l0.6,0 0,0.6 -0.6,0z" android:strokeColor="#CCFFFFFF" android:strokeWidth="0.8" />
+    <path android:pathData="M70,42l0.6,0 0,0.6 -0.6,0z" android:strokeColor="#CCFFFFFF" android:strokeWidth="0.8" />
+    <path android:pathData="M74,62l0.6,0 0,0.6 -0.6,0z" android:strokeColor="#99FFFFFF" android:strokeWidth="0.8" />
+    <path android:pathData="M35,58l0.6,0 0,0.6 -0.6,0z" android:strokeColor="#99FFFFFF" android:strokeWidth="0.8" />
+
+    <!-- нейросеть: линии по бокам -->
+    <path android:pathData="M36,50L45,53M36,56L44,56M36,62L45,59M72,50L63,53M72,56L64,56M72,62L63,59"
+        android:strokeColor="#887E8CFF" android:strokeWidth="0.6" />
+    <path android:pathData="M36,50l1.4,1.4 -1.4,1.4 -1.4,-1.4z M36,62l1.4,1.4 -1.4,1.4 -1.4,-1.4z M72,50l1.4,1.4 -1.4,1.4 -1.4,-1.4z M72,62l1.4,1.4 -1.4,1.4 -1.4,-1.4z"
+        android:fillColor="#FFA9B4FF" />
+
+    <!-- большая искра сверху -->
+    <path android:pathData="M54,27Q55.5,32.5 61,34Q55.5,35.5 54,41Q52.5,35.5 47,34Q52.5,32.5 54,27Z"
+        android:fillColor="#FFEBDDFF" />
+
+    <!-- кольцо и play -->
+    <path android:pathData="M54,42a13,13 0,1 0,0.01 0z"
+        android:strokeColor="#FFB9A6FF" android:strokeWidth="1" />
+    <path android:pathData="M50,48L62,55L50,62Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="50" android:startY="48"
+                android:endX="62" android:endY="62">
+                <item android:offset="0" android:color="#FFEAF2FF" />
+                <item android:offset="1" android:color="#FF9DB5FF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- левая кнопка: фото -->
+    <path android:pathData="M37,67a7,7 0,1 0,0.01 0z" android:fillColor="#FF3A3947"
+        android:strokeColor="#55FFFFFF" android:strokeWidth="0.5" />
+    <path android:pathData="M33,76L36,71.5L38.5,74.5L40,73L42,76Z" android:fillColor="#FFE2E2EA" />
+    <path android:pathData="M32.5,65.5h9v8h-9z" android:strokeColor="#FFE2E2EA" android:strokeWidth="0.7" />
+
+    <!-- правая кнопка: диафрагма -->
+    <path android:pathData="M71,67a7,7 0,1 0,0.01 0z" android:fillColor="#FF3A3947"
+        android:strokeColor="#55FFFFFF" android:strokeWidth="0.5" />
+    <path android:pathData="M71,62.5a4.5,4.5 0,1 0,0.01 0z" android:strokeColor="#FFE2E2EA" android:strokeWidth="0.8" />
+    <path android:pathData="M71,62.5L74,67.5M66.5,65L72.5,64.5M67,69.5L70,64.5M71,71.5L68,66.5M75,69L69,69.5"
+        android:strokeColor="#FFE2E2EA" android:strokeWidth="0.5" />
+
+    <!-- «бейдж» -->
+    <path android:pathData="M70,26a6,6 0,1 0,0.01 0z" android:fillColor="#FF2A2540"
+        android:strokeColor="#FFB9C4FF" android:strokeWidth="0.8" />
 </vector>

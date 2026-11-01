@@ -34,7 +34,7 @@ jobs:
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             echo "name=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
           else
-            echo "name=0.0.${GITHUB_RUN_NUMBER}-dev" >> "$GITHUB_OUTPUT"
+            echo "name=1.0.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Ключ подписи (если добавлен в Secrets)
@@ -67,9 +67,13 @@ jobs:
           name: MayskGallery-${{ steps.ver.outputs.name }}
           path: MayskGallery-*.apk
 
-      - name: Публикуем релиз (только для тегов v*)
-        if: startsWith(github.ref, 'refs/tags/v')
+      # Каждый push в main = новый релиз v1.0.<номер сборки>. Его и видит приложение при проверке обновлений.
+      - name: Публикуем релиз
+        if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v{0}', steps.ver.outputs.name) }}
+          target_commitish: ${{ github.sha }}
           files: MayskGallery-*.apk
           generate_release_notes: true
+          make_latest: true
