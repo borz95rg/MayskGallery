@@ -85,6 +85,7 @@ private fun RootContent(vm: MainViewModel) {
     var viewer by remember { mutableStateOf<ViewerState?>(null) }
     var editing by remember { mutableStateOf<MediaItem?>(null) }
     var pendingDelete by remember { mutableStateOf<MediaItem?>(null) }
+    var pendingBulkDelete by remember { mutableStateOf<List<MediaItem>?>(null) }
     var vaultUnlocked by remember { mutableStateOf(false) }
 
     // сейф закрывается при выходе из вкладки и при сворачивании приложения
@@ -129,23 +130,26 @@ private fun RootContent(vm: MainViewModel) {
         viewer = null
         vm.reload()
     }
-    fun performDelete(item: MediaItem) {
+    fun performDelete(itemsToDelete: List<MediaItem>) {
+        if (itemsToDelete.isEmpty()) return
         if (Build.VERSION.SDK_INT >= 30) {
-            val pi = MediaStore.createTrashRequest(ctx.contentResolver, listOf(item.uri), true)
+            val pi = MediaStore.createTrashRequest(ctx.contentResolver, itemsToDelete.map { it.uri }, true)
             deleteLauncher.launch(IntentSenderRequest.Builder(pi.intentSender).build())
         } else {
             try {
-                ctx.contentResolver.delete(item.uri, null, null)
+                itemsToDelete.forEach { ctx.contentResolver.delete(it.uri, null, null) }
                 viewer = null
                 vm.reload()
             } catch (e: SecurityException) {
-                Toast.makeText(ctx, "Не удалось удалить файл", Toast.LENGTH_SHORT).show()
+                Toast.makeText(ctx, "Не удалось удалить часть файлов. Проверьте разрешения Android.", Toast.LENGTH_LONG).show()
+                vm.reload()
             }
         }
     }
 
+
     fun delete(item: MediaItem) {
-        if (s.confirmDelete) pendingDelete = item else performDelete(item)
+        if (s.confirmDelete) pendingDelete = item else performDelete(listOf(item))
     }
 
     /** После копирования в сейф просим систему удалить оригинал (появится диалог подтверждения). */
@@ -190,7 +194,9 @@ private fun RootContent(vm: MainViewModel) {
                         Text("Загрузка…", color = MaterialTheme.colorScheme.onBackground)
                     }
                     else -> when (tab) {
-                        0 -> GalleryScreen(items, s) { list, i -> viewer = ViewerState(list, i) }
+                        0 -> GalleryScreen(items, s,
+                            onOpen = { list, i -> viewer = ViewerState(list, i) },
+                            onDeleteSelected = { selected -> pendingBulkDelete = selected })
                         1 -> AlbumsScreen(items, s, openAlbum, { openAlbum = it }) { list, i -> viewer = ViewerState(list, i) }
                         2 -> SearchScreen(items, labels, progress, s) { list, i -> viewer = ViewerState(list, i) }
                         3 -> SecretTab(
@@ -211,10 +217,9 @@ private fun RootContent(vm: MainViewModel) {
                         )
                         6 -> {
                             val videos = items.filter { it.isVideo }
-                            Column(Modifier.fillMaxSize()) {
-                                ScreenTitle("видео")
-                                MediaGrid(videos, s, onOpen = { viewer = ViewerState(videos, it) })
-                            }
+                            GalleryScreen(videos, s,
+                                onOpen = { list, i -> viewer = ViewerState(list, i) },
+                                onDeleteSelected = { selected -> pendingBulkDelete = selected })
                         }
                         7 -> {
                             val f = filter
@@ -251,13 +256,25 @@ private fun RootContent(vm: MainViewModel) {
             ) { tab = when (it) { 0 -> 0; 2 -> 6; else -> 5 } }
         }
 
+        pendingBulkDelete?.let { selected ->
+            AlertDialog(
+                onDismissRequest = { pendingBulkDelete = null },
+                title = { Text("Переместить в корзину?") },
+                text = { Text("Будет перемещено ${selected.size} файлов — фото и видео. Их можно будет восстановить из корзины Android.") },
+                confirmButton = {
+                    TextButton(onClick = { pendingBulkDelete = null; performDelete(selected) }) { Text("Удалить (${selected.size})") }
+                },
+                dismissButton = { TextButton(onClick = { pendingBulkDelete = null }) { Text("Отмена") } },
+            )
+        }
+
         pendingDelete?.let { item ->
             AlertDialog(
                 onDismissRequest = { pendingDelete = null },
                 title = { Text("Переместить в корзину?") },
                 text = { Text("Файл «${item.name}» будет перемещён в системную корзину Android.") },
                 confirmButton = {
-                    TextButton(onClick = { pendingDelete = null; performDelete(item) }) { Text("Удалить") }
+                    TextButton(onClick = { pendingDelete = null; performDelete(listOf(item)) }) { Text("Удалить") }
                 },
                 dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("Отмена") } },
             )
