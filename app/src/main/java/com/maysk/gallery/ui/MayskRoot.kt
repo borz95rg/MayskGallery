@@ -15,23 +15,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import com.maysk.gallery.data.ThemePreset
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Style
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -48,7 +39,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -63,16 +53,6 @@ import com.maysk.gallery.data.MediaItem
 import com.maysk.gallery.update.ApkInstaller
 
 private class ViewerState(val items: List<MediaItem>, val index: Int, val secret: Boolean = false)
-
-private data class Tab(val title: String, val icon: ImageVector)
-
-private val tabs = listOf(
-    Tab("Галерея", Icons.Filled.PhotoLibrary),
-    Tab("Альбомы", Icons.Filled.Style),
-    Tab("AI Поиск", Icons.Filled.AutoAwesome),
-    Tab("Сейф", Icons.Filled.Lock),
-    Tab("Настройки", Icons.Filled.Settings),
-)
 
 @Composable
 fun MayskRoot(vm: MainViewModel) {
@@ -95,24 +75,24 @@ private fun RootContent(vm: MainViewModel) {
     val secretItems by vm.secret.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
 
-    val orig = s.preset == ThemePreset.ORIGINAL
-    // 0 Галерея, 1 Альбомы, 2 AI, 3 Сейф, 4 Настройки, 5 Главная (Original), 6 Видео, 7 Подборка
+    // Главный экран и нижняя капсула — единая навигация для всех цветовых тем.
+    // 0 Галерея, 1 Альбомы, 2 AI, 3 Сейф, 4 Настройки, 5 Главная, 6 Видео, 7 Подборка, 8 Корзина
     var tab by rememberSaveable { mutableIntStateOf(5) }
     var filter by remember { mutableStateOf<Pair<String, List<MediaItem>>?>(null) }
     val pickCover = rememberCoverPicker(vm)
-    LaunchedEffect(orig) { if (!orig && tab >= 5) tab = 0 }
-    BackHandler(enabled = orig && tab != 5) { tab = 5 }
+    BackHandler(enabled = tab != 5) { tab = 5 }
     var openAlbum by rememberSaveable { mutableStateOf<String?>(null) }
     var viewer by remember { mutableStateOf<ViewerState?>(null) }
     var editing by remember { mutableStateOf<MediaItem?>(null) }
+    var pendingDelete by remember { mutableStateOf<MediaItem?>(null) }
     var vaultUnlocked by remember { mutableStateOf(false) }
 
     // сейф закрывается при выходе из вкладки и при сворачивании приложения
     LaunchedEffect(tab) { if (tab != 3) vaultUnlocked = false }
     val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
+    DisposableEffect(lifecycleOwner, s.lockOnBackground) {
         val obs = LifecycleEventObserver { _, e ->
-            if (e == Lifecycle.Event.ON_STOP && viewer?.secret != true) vaultUnlocked = false
+            if (e == Lifecycle.Event.ON_STOP && s.lockOnBackground && viewer?.secret != true) vaultUnlocked = false
         }
         lifecycleOwner.lifecycle.addObserver(obs)
         onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
@@ -149,7 +129,7 @@ private fun RootContent(vm: MainViewModel) {
         viewer = null
         vm.reload()
     }
-    fun delete(item: MediaItem) {
+    fun performDelete(item: MediaItem) {
         if (Build.VERSION.SDK_INT >= 30) {
             val pi = MediaStore.createTrashRequest(ctx.contentResolver, listOf(item.uri), true)
             deleteLauncher.launch(IntentSenderRequest.Builder(pi.intentSender).build())
@@ -162,6 +142,10 @@ private fun RootContent(vm: MainViewModel) {
                 Toast.makeText(ctx, "Не удалось удалить файл", Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    fun delete(item: MediaItem) {
+        if (s.confirmDelete) pendingDelete = item else performDelete(item)
     }
 
     /** После копирования в сейф просим систему удалить оригинал (появится диалог подтверждения). */
@@ -193,31 +177,13 @@ private fun RootContent(vm: MainViewModel) {
     }
 
     Box(Modifier.fillMaxSize().background(appBackground(s))) {
-        val navBar: @Composable () -> Unit = {
-            NavigationBar(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = s.glassAlpha)) {
-                tabs.forEachIndexed { i, t ->
-                    NavigationBarItem(
-                        selected = tab == i,
-                        onClick = {
-                            tab = i
-                            if (i != 1) openAlbum = null
-                        },
-                        icon = { Icon(t.icon, t.title) },
-                        label = { Text(t.title, maxLines = 1) },
-                        colors = NavigationBarItemDefaults.colors(
-                            indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
-                        ),
-                    )
-                }
-            }
-        }
-
         Scaffold(
             containerColor = Color.Transparent,
-            topBar = { if (!orig && s.navTop) navBar() },
-            bottomBar = { if (!orig && !s.navTop) navBar() },
+            // Темы меняют только палитру и эффекты; навигационная структура не меняется.
+            topBar = {},
+            bottomBar = {},
         ) { pad ->
-            Box(Modifier.padding(pad).padding(bottom = if (orig) 100.dp else 0.dp).fillMaxSize()) {
+            Box(Modifier.padding(pad).padding(bottom = 100.dp).fillMaxSize()) {
                 when {
                     !granted -> PermissionScreen { permLauncher.launch(perms) }
                     !loaded -> Box(Modifier.fillMaxSize(), Alignment.Center) {
@@ -264,17 +230,37 @@ private fun RootContent(vm: MainViewModel) {
                                 MediaGrid(f?.second ?: emptyList(), s, onOpen = { viewer = ViewerState(f?.second ?: emptyList(), it) })
                             }
                         }
+                        8 -> TrashScreen(s) { list, i -> viewer = ViewerState(list, i) }
+                        in 9..13 -> ExtraFeaturesScreen(
+                            feature = when (tab) { 9 -> "memories"; 10 -> "duplicates"; 11 -> "collage"; 12 -> "slideshow"; else -> "map" },
+                            items = items,
+                            s = s,
+                            onOpen = { list, i -> viewer = ViewerState(list, i) },
+                            onBack = { tab = 5 },
+                        )
                         else -> SettingsScreen(vm, s)
                     }
                 }
             }
         }
 
-        if (orig && viewer == null && editing == null) {
+        if (viewer == null && editing == null) {
             OriginalDock(
                 selected = when (tab) { 0 -> 0; 6 -> 2; else -> 1 },
                 modifier = Modifier.align(Alignment.BottomCenter),
             ) { tab = when (it) { 0 -> 0; 2 -> 6; else -> 5 } }
+        }
+
+        pendingDelete?.let { item ->
+            AlertDialog(
+                onDismissRequest = { pendingDelete = null },
+                title = { Text("Переместить в корзину?") },
+                text = { Text("Файл «${item.name}» будет перемещён в системную корзину Android.") },
+                confirmButton = {
+                    TextButton(onClick = { pendingDelete = null; performDelete(item) }) { Text("Удалить") }
+                },
+                dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("Отмена") } },
+            )
         }
 
         viewer?.let { v ->

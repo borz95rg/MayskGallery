@@ -6,6 +6,8 @@ import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -87,19 +89,23 @@ fun SecretTab(
     onOpen: (list: List<MediaItem>, index: Int) -> Unit,
 ) {
     if (!unlocked) {
-        PinGate(vault, onUnlocked)
+        PinGate(vault, s.biometricUnlock, onUnlocked)
         return
     }
     val ctx = LocalContext.current
     val bioAvailable = remember { biometricAvailable(ctx) }
-    var bio by remember { mutableStateOf(vault.biometric) }
+    var bio by remember { mutableStateOf(vault.biometric && s.biometricUnlock) }
+    val albums = remember(items) { items.map { it.bucket }.distinct().sorted() }
+    var selectedAlbum by remember { mutableStateOf("Все") }
+    val visibleItems = remember(items, selectedAlbum) { if (selectedAlbum == "Все") items else items.filter { it.bucket == selectedAlbum } }
+    LaunchedEffect(albums) { if (selectedAlbum != "Все" && selectedAlbum !in albums) selectedAlbum = "Все" }
 
     Column(Modifier.fillMaxSize()) {
-        ScreenTitle("Секретный альбом")
+        ScreenTitle("Приватные альбомы")
         MediaGrid(
-            items = items,
+            items = visibleItems,
             s = s,
-            onOpen = { onOpen(items, it) },
+            onOpen = { onOpen(visibleItems, it) },
             header = {
                 Column(Modifier.fillMaxWidth().glass(s).padding(14.dp)) {
                     Text(
@@ -107,6 +113,20 @@ fun SecretTab(
                         else "Скрыто файлов: ${items.size}. Они не видны в галерее и других приложениях.",
                         color = MaterialTheme.colorScheme.onSurface,
                     )
+                    if (albums.isNotEmpty()) {
+                        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            (listOf("Все") + albums).forEach { album ->
+                                Text(
+                                    album,
+                                    color = if (selectedAlbum == album) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.clip(CircleShape)
+                                        .background(if (selectedAlbum == album) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = .07f))
+                                        .clickable { selectedAlbum = album }
+                                        .padding(horizontal = 12.dp, vertical = 7.dp),
+                                )
+                            }
+                        }
+                    }
                     if (bioAvailable) {
                         Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text(
@@ -124,7 +144,7 @@ fun SecretTab(
 }
 
 @Composable
-private fun PinGate(vault: SecretVault, onUnlocked: () -> Unit) {
+private fun PinGate(vault: SecretVault, biometricAllowed: Boolean, onUnlocked: () -> Unit) {
     val ctx = LocalContext.current
     val cs = MaterialTheme.colorScheme
     var hasPin by remember { mutableStateOf(vault.hasPin) }
@@ -139,7 +159,7 @@ private fun PinGate(vault: SecretVault, onUnlocked: () -> Unit) {
     }
 
     LaunchedEffect(Unit) {
-        if (hasPin && canBio && vault.biometric) askBiometric()
+        if (hasPin && canBio && vault.biometric && biometricAllowed) askBiometric()
     }
     LaunchedEffect(lockMs > 0) {
         while (lockMs > 0) {

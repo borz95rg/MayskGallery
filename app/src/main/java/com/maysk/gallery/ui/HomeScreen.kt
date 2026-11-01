@@ -156,7 +156,12 @@ fun HomeScreen(
             Box {
                 RoundIcon(Icons.Filled.Menu) { menu = true }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                    listOf("Все альбомы" to 1, "AI Поиск" to 2, "Сейф" to 3, "Настройки" to 4).forEach { (t, i) ->
+                    listOf(
+                        "Все альбомы" to 1, "AI Поиск" to 2, "Сейф" to 3,
+                        "Корзина" to 8, "Воспоминания" to 9, "Дубликаты" to 10,
+                        "Коллаж" to 11, "Слайд-шоу" to 12, "Карта фотографий" to 13,
+                        "Приватные альбомы" to 3, "Настройки" to 4,
+                    ).forEach { (t, i) ->
                         DropdownMenuItem(text = { Text(t) }, onClick = { menu = false; onTab(i) })
                     }
                 }
@@ -256,6 +261,7 @@ fun HomeScreen(
         }
 
         // ---- воспоминания ----
+        if (s.memoriesEnabled) {
         Text(
             "воспоминания ✦", fontFamily = Serif, fontSize = 26.sp, color = Color.White,
             modifier = Modifier.padding(start = 22.dp, top = 14.dp),
@@ -265,16 +271,31 @@ fun HomeScreen(
         }
         var yearIdx by remember { mutableIntStateOf(0) }
         val year = years[yearIdx.coerceIn(0, years.lastIndex)]
+        var yearMenu by remember { mutableStateOf(false) }
         var month by remember { mutableIntStateOf(LocalDate.now().monthValue - 1) }
+        val monthItems = remember(items, month, year) {
+            items.filter { val d = it.date(); d.year == year && d.monthValue == month + 1 }
+                .sortedByDescending { it.dateMillis }
+        }
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                if (years.size > 1) "$year ▾" else "$year", fontSize = 12.sp, color = Color.White,
-                modifier = Modifier.clickable { yearIdx = (yearIdx + 1) % years.size },
-            )
+            Box {
+                Text(
+                    "$year ▾", fontSize = 12.sp, color = Color.White,
+                    modifier = Modifier.clickable { yearMenu = true }.padding(vertical = 4.dp),
+                )
+                DropdownMenu(expanded = yearMenu, onDismissRequest = { yearMenu = false }) {
+                    years.forEachIndexed { index, value ->
+                        DropdownMenuItem(
+                            text = { Text(value.toString()) },
+                            onClick = { yearIdx = index; yearMenu = false },
+                        )
+                    }
+                }
+            }
             months.forEachIndexed { i, m ->
                 val sel = i == month
                 Text(
@@ -283,17 +304,27 @@ fun HomeScreen(
                     modifier = Modifier
                         .clip(CircleShape)
                         .background(if (sel) cs.primary else Color.Transparent)
-                        .clickable { month = i }
+                        .clickable {
+                            month = i
+                            val selected = items.filter { val d = it.date(); d.year == year && d.monthValue == i + 1 }
+                                .sortedByDescending { it.dateMillis }
+                            if (selected.isNotEmpty()) onFilter("$m $year", selected)
+                        }
                         .padding(horizontal = 6.dp, vertical = 3.dp),
                 )
             }
         }
-        val monthItems = remember(items, month, year) {
-            items.filter { val d = it.date(); d.year == year && d.monthValue == month + 1 }.take(40)
-        }
         if (monthItems.isEmpty()) {
             Text("в этом месяце пока пусто", fontSize = 13.sp, color = cs.onSurfaceVariant, modifier = Modifier.padding(start = 22.dp, top = 6.dp))
-        } else ThumbRow(monthItems, s, onOpen)
+        } else ThumbRow(monthItems.take(12), s, onOpen)
+        if (monthItems.size > 12) {
+            Text(
+                "весь месяц · ${monthItems.size} фото и видео →",
+                fontSize = 12.sp, color = cs.onSurfaceVariant,
+                modifier = Modifier.clickable { onFilter("${months[month]} $year", monthItems) }
+                    .padding(start = 22.dp, top = 8.dp),
+            )
+        }
 
         // ---- в этот день ----
         val today = LocalDate.now()
@@ -306,6 +337,7 @@ fun HomeScreen(
                 modifier = Modifier.padding(start = 22.dp, top = 22.dp, bottom = 10.dp),
             )
             ThumbRow(onThisDay.take(40), s, onOpen)
+        }
         }
     }
 }

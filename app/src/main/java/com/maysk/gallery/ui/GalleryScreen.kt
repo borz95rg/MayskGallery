@@ -58,9 +58,12 @@ fun GalleryScreen(
     val shown = remember(items, s.favorites, onlyFav) {
         if (onlyFav) items.filter { it.key in s.favorites } else items
     }
-    val sections = remember(shown) {
-        val today = LocalDate.now()
-        shown.groupBy { sectionTitle(it.dateMillis, today) }.toList()
+    val sections = remember(shown, s.groupByDate, s.showDates) {
+        if (!s.groupByDate) listOf("" to shown)
+        else {
+            val today = LocalDate.now()
+            shown.groupBy { sectionTitle(it.dateMillis, today) }.toList()
+        }
     }
     val indexOf = remember(shown) { shown.withIndex().associate { it.value.key to it.index } }
 
@@ -90,7 +93,7 @@ fun GalleryScreen(
         ) {
             for ((title, list) in sections) {
                 item(span = { GridItemSpan(maxLineSpan) }, key = "h_$title") {
-                    Text(
+                    if (s.showDates && title.isNotBlank()) Text(
                         title,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,

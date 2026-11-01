@@ -12,6 +12,9 @@ data class MediaItem(
     val dateMillis: Long,
     val bucket: String,
     val durationMs: Long,
+    /** Unix epoch millis when MediaStore plans to permanently remove a trashed item; 0 if unknown. */
+    val expiresAtMillis: Long = 0L,
+    val sizeBytes: Long = 0L,
 ) {
     /** Уникален среди фото и видео (id у них могут совпадать). */
     val key: String get() = (if (isVideo) "v" else "i") + id
@@ -69,4 +72,20 @@ data class UiSettings(
     val accent: Int = 0,
     /** Матовость стекла 0..1 (светлая дымка на стеклянных панелях). */
     val frost: Float = 0f,
+    val showDates: Boolean = true,
+    val groupByDate: Boolean = true,
+    val confirmDelete: Boolean = true,
+    val lockOnBackground: Boolean = true,
+    val biometricUnlock: Boolean = true,
+    val hideNotificationContent: Boolean = true,
+    val trashRetentionDays: Int = 30,
+    val memoriesEnabled: Boolean = true,
+    val memoriesNotifications: Boolean = false,
+    val widgetRandom: Boolean = false,
+    val widgetBlur: Boolean = true,
+    val slideshowSeconds: Int = 4,
+    val duplicateScanEnabled: Boolean = true,
+    val autoBackupEnabled: Boolean = false,
+    val language: String = "system",
+    val dateFormat: String = "system",
 )

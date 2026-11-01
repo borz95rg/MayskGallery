@@ -62,28 +62,31 @@ class SecretVault(private val context: Context) {
     // ---------- файлы ----------
 
     fun list(): List<MediaItem> =
-        (dir.listFiles() ?: emptyArray())
-            .filter { it.isFile }
+        dir.walkTopDown().filter { it.isFile }
             .sortedByDescending { it.lastModified() }
             .map { f ->
                 val display = f.name.substringAfter("__", f.name)
                 val ext = display.substringAfterLast('.', "").lowercase()
                 val mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext) ?: "image/*"
+                val album = f.parentFile?.takeIf { it != dir }?.name ?: "Сейф"
                 MediaItem(
-                    id = f.name.hashCode().toLong() and 0x7fffffffL,
+                    id = f.absolutePath.hashCode().toLong() and 0x7fffffffL,
                     uri = Uri.fromFile(f),
                     isVideo = mime.startsWith("video"),
                     name = display,
                     mime = mime,
                     dateMillis = f.lastModified(),
-                    bucket = "Сейф",
+                    bucket = album,
                     durationMs = 0L,
+                    sizeBytes = f.length(),
                 )
-            }
+            }.toList()
 
     /** Копирует файл в сейф. Оригинал удаляет вызывающий код (нужно подтверждение системы). */
     fun hide(item: MediaItem): Boolean = try {
-        val target = File(dir, "${item.key}__${item.name}")
+        val albumName = item.bucket.replace(Regex("[^\\p{L}\\p{N} _.-]"), "_").take(60).ifBlank { "Без альбома" }
+        val albumDir = File(dir, albumName).apply { mkdirs() }
+        val target = File(albumDir, "${item.key}__${item.name}")
         context.contentResolver.openInputStream(item.uri)?.use { input ->
             target.outputStream().use { input.copyTo(it) }
         } ?: error("no stream")

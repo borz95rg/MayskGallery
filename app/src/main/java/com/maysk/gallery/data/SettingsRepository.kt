@@ -29,6 +29,22 @@ object Keys {
     val ACCENT = intPreferencesKey("accent")
     val FROST = floatPreferencesKey("frost")
     val COVERS = List(5) { stringPreferencesKey("cover$it") }
+    val SHOW_DATES = booleanPreferencesKey("show_dates")
+    val GROUP_BY_DATE = booleanPreferencesKey("group_by_date")
+    val CONFIRM_DELETE = booleanPreferencesKey("confirm_delete")
+    val LOCK_ON_BACKGROUND = booleanPreferencesKey("lock_on_background")
+    val BIOMETRIC_UNLOCK = booleanPreferencesKey("biometric_unlock")
+    val HIDE_NOTIFICATION_CONTENT = booleanPreferencesKey("hide_notification_content")
+    val TRASH_RETENTION = intPreferencesKey("trash_retention_days")
+    val MEMORIES_ENABLED = booleanPreferencesKey("memories_enabled")
+    val MEMORIES_NOTIFICATIONS = booleanPreferencesKey("memories_notifications")
+    val WIDGET_RANDOM = booleanPreferencesKey("widget_random")
+    val WIDGET_BLUR = booleanPreferencesKey("widget_blur")
+    val SLIDESHOW_SECONDS = intPreferencesKey("slideshow_seconds")
+    val DUPLICATE_SCAN = booleanPreferencesKey("duplicate_scan_enabled")
+    val AUTO_BACKUP = booleanPreferencesKey("auto_backup_enabled")
+    val LANGUAGE = stringPreferencesKey("language")
+    val DATE_FORMAT = stringPreferencesKey("date_format")
 }
 
 class SettingsRepository(private val context: Context) {
@@ -50,6 +66,22 @@ class SettingsRepository(private val context: Context) {
             covers = Keys.COVERS.map { p[it] ?: "" },
             accent = p[Keys.ACCENT] ?: d.accent,
             frost = (p[Keys.FROST] ?: d.frost).coerceIn(0f, 1f),
+            showDates = p[Keys.SHOW_DATES] ?: d.showDates,
+            groupByDate = p[Keys.GROUP_BY_DATE] ?: d.groupByDate,
+            confirmDelete = p[Keys.CONFIRM_DELETE] ?: d.confirmDelete,
+            lockOnBackground = p[Keys.LOCK_ON_BACKGROUND] ?: d.lockOnBackground,
+            biometricUnlock = p[Keys.BIOMETRIC_UNLOCK] ?: d.biometricUnlock,
+            hideNotificationContent = p[Keys.HIDE_NOTIFICATION_CONTENT] ?: d.hideNotificationContent,
+            trashRetentionDays = (p[Keys.TRASH_RETENTION] ?: d.trashRetentionDays).coerceIn(7, 90),
+            memoriesEnabled = p[Keys.MEMORIES_ENABLED] ?: d.memoriesEnabled,
+            memoriesNotifications = p[Keys.MEMORIES_NOTIFICATIONS] ?: d.memoriesNotifications,
+            widgetRandom = p[Keys.WIDGET_RANDOM] ?: d.widgetRandom,
+            widgetBlur = p[Keys.WIDGET_BLUR] ?: d.widgetBlur,
+            slideshowSeconds = (p[Keys.SLIDESHOW_SECONDS] ?: d.slideshowSeconds).coerceIn(2, 15),
+            duplicateScanEnabled = p[Keys.DUPLICATE_SCAN] ?: d.duplicateScanEnabled,
+            autoBackupEnabled = p[Keys.AUTO_BACKUP] ?: d.autoBackupEnabled,
+            language = p[Keys.LANGUAGE] ?: d.language,
+            dateFormat = p[Keys.DATE_FORMAT] ?: d.dateFormat,
         )
     }
 

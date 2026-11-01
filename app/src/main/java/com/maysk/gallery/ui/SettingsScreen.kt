@@ -127,13 +127,46 @@ fun SettingsScreen(vm: MainViewModel, s: UiSettings) {
                 }
             }
             SettingsSlider("Колонки в сетке", "${s.columns}", s.columns.toFloat(), 2f..8f) { vm.set(Keys.COLUMNS, it.roundToInt()) }
+            SettingsSwitch("Показывать даты", "Отображать дату съёмки рядом с группами фотографий", s.showDates) { vm.set(Keys.SHOW_DATES, it) }
+            SettingsSwitch("Группировать по дате", "Разделять общую галерею на дни и периоды", s.groupByDate) { vm.set(Keys.GROUP_BY_DATE, it) }
             SettingsLabel("Стиль альбомов", "Выбери удобный вид списка альбомов")
             ChipRow(AlbumView.values().toList(), s.albumView, { it.title }) { vm.set(Keys.ALBUM_VIEW, it.name) }
         }
 
-        SettingsGroup("УДОБСТВО", "Навигация и анимация") {
-            SettingsLabel("Положение панели навигации", "Выбери, где удобнее переключать разделы")
-            ChipRow(listOf(false, true), s.navTop, { if (it) "Сверху" else "Снизу" }) { vm.set(Keys.NAV_TOP, it) }
+        SettingsGroup("БЕЗОПАСНОСТЬ", "Приватность и защита личных файлов") {
+            SettingsSwitch("Блокировать сейф при сворачивании", "При возвращении потребуется повторная разблокировка", s.lockOnBackground) { vm.set(Keys.LOCK_ON_BACKGROUND, it) }
+            SettingsSwitch("Отпечаток пальца", "Использовать биометрию, если устройство поддерживает её", s.biometricUnlock) { vm.set(Keys.BIOMETRIC_UNLOCK, it) }
+            SettingsSwitch("Скрывать содержимое уведомлений", "Не показывать имена и превью личных файлов", s.hideNotificationContent) { vm.set(Keys.HIDE_NOTIFICATION_CONTENT, it) }
+        }
+
+        SettingsGroup("КОРЗИНА", "Управление удалёнными файлами") {
+            SettingsSwitch("Подтверждать удаление", "Показывать дополнительное подтверждение перед удалением", s.confirmDelete) { vm.set(Keys.CONFIRM_DELETE, it) }
+            SettingsLabel("Предпочтительный срок хранения", "На Android срок системной корзины может определяться самой системой")
+            ChipRow(listOf(7, 15, 30, 60, 90), s.trashRetentionDays, { "$it дн." }) { vm.set(Keys.TRASH_RETENTION, it) }
+        }
+
+        SettingsGroup("ХРАНИЛИЩЕ", "Контроль места и файлов") {
+            SettingsSwitch("Подготавливать поиск дубликатов", "Разрешить анализ файлов для поиска совпадений", s.duplicateScanEnabled) { vm.set(Keys.DUPLICATE_SCAN, it) }
+            SettingsSwitch("Подготовить автокопирование", "Сохранить предпочтение; перед запуском нужно выбрать безопасное место для копий", s.autoBackupEnabled) { vm.set(Keys.AUTO_BACKUP, it) }
+            SettingsLabel("Очистка кэша", "Кэш миниатюр можно очищать отдельно от оригиналов фотографий")
+        }
+
+        SettingsGroup("ВОСПОМИНАНИЯ", "Подборки по датам и прошлым годам") {
+            SettingsSwitch("Показывать воспоминания", "Раздел воспоминаний на главной странице", s.memoriesEnabled) { vm.set(Keys.MEMORIES_ENABLED, it) }
+            SettingsLabel("Уведомления о воспоминаниях", "Планирование уведомлений будет добавлено отдельно; сейчас воспоминания доступны на главной странице.")
+        }
+
+        SettingsGroup("ВИДЖЕТ", "Фотографии на главном экране телефона") {
+            SettingsSwitch("Случайные фотографии", "Менять изображение виджета при обновлении", s.widgetRandom) { vm.set(Keys.WIDGET_RANDOM, it) }
+            SettingsSwitch("Размывать миниатюру", "Показывать мягко размытое изображение в виджете", s.widgetBlur) { vm.set(Keys.WIDGET_BLUR, it) }
+        }
+
+        SettingsGroup("ДОПОЛНИТЕЛЬНО", "Язык, даты и воспроизведение") {
+            SettingsLabel("Язык приложения", "Выбор сохраняется; полная локализация интерфейса подключается отдельно.")
+            ChipRow(listOf("system", "ru", "kk", "en"), s.language, { when (it) { "system" -> "Системный"; "ru" -> "Русский"; "kk" -> "Қазақша"; else -> "English" } }) { vm.set(Keys.LANGUAGE, it) }
+            SettingsLabel("Формат даты", "Предпочтение сохраняется; применение формата ко всем экранам дат требует отдельной локализации.")
+            ChipRow(listOf("system", "dmy", "mdy"), s.dateFormat, { when (it) { "dmy" -> "ДД.ММ.ГГГГ"; "mdy" -> "ММ/ДД/ГГГГ"; else -> "Системный" } }) { vm.set(Keys.DATE_FORMAT, it) }
+            SettingsSlider("Интервал слайд-шоу", "${s.slideshowSeconds} сек.", s.slideshowSeconds.toFloat(), 2f..15f) { vm.set(Keys.SLIDESHOW_SECONDS, it.roundToInt()) }
             SettingsLabel("Анимация появления")
             ChipRow(AnimStyle.values().toList(), s.animation, { it.title }) { vm.set(Keys.ANIM, it.name) }
             SettingsSlider("Размер текста", "${(s.fontScale * 100).toInt()}%", s.fontScale, .8f..1.4f) { vm.set(Keys.FONT, it) }
@@ -168,6 +201,18 @@ fun SettingsScreen(vm: MainViewModel, s: UiSettings) {
             modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
+    }
+}
+
+@Composable
+private fun SettingsSwitch(title: String, description: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    val cs = MaterialTheme.colorScheme
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f).padding(end = 12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, color = cs.onSurface, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            Text(description, color = cs.onSurfaceVariant, fontSize = 11.sp, lineHeight = 15.sp)
+        }
+        Switch(checked = checked, onCheckedChange = onChange)
     }
 }
 

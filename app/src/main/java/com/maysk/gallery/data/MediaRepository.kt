@@ -33,11 +33,13 @@ object MediaRepository {
             add(MediaStore.MediaColumns._ID)
             add(MediaStore.MediaColumns.DISPLAY_NAME)
             add(MediaStore.MediaColumns.MIME_TYPE)
+            add(MediaStore.MediaColumns.SIZE)
             add(MediaStore.MediaColumns.DATE_ADDED)
             add(MediaStore.MediaColumns.DATE_MODIFIED)
             add(MediaStore.MediaColumns.BUCKET_DISPLAY_NAME)
             add(if (isVideo) MediaStore.Video.Media.DATE_TAKEN else MediaStore.Images.Media.DATE_TAKEN)
             if (isVideo) add(MediaStore.Video.Media.DURATION)
+            if (trashedOnly && android.os.Build.VERSION.SDK_INT >= 30) add(MediaStore.MediaColumns.DATE_EXPIRES)
         }.toTypedArray()
 
         val out = ArrayList<MediaItem>()
@@ -48,12 +50,15 @@ object MediaRepository {
                 val iId = c.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
                 val iName = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
                 val iMime = c.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)
+                val iSize = c.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
                 val iAdded = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_ADDED)
                 val iBucket = c.getColumnIndexOrThrow(MediaStore.MediaColumns.BUCKET_DISPLAY_NAME)
                 val iTaken = c.getColumnIndexOrThrow(
                     if (isVideo) MediaStore.Video.Media.DATE_TAKEN else MediaStore.Images.Media.DATE_TAKEN
                 )
                 val iDur = if (isVideo) c.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION) else -1
+                val iExpires = if (trashedOnly && android.os.Build.VERSION.SDK_INT >= 30)
+                    c.getColumnIndex(MediaStore.MediaColumns.DATE_EXPIRES) else -1
 
                 while (c.moveToNext()) {
                     val id = c.getLong(iId)
@@ -68,6 +73,8 @@ object MediaRepository {
                         dateMillis = date,
                         bucket = c.getString(iBucket)?.takeIf { it.isNotBlank() } ?: "Без альбома",
                         durationMs = if (iDur >= 0) c.getLong(iDur) else 0L,
+                        expiresAtMillis = if (iExpires >= 0 && !c.isNull(iExpires)) c.getLong(iExpires) * 1000L else 0L,
+                        sizeBytes = if (!c.isNull(iSize)) c.getLong(iSize) else 0L,
                     )
                 }
             }
