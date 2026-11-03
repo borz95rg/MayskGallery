@@ -260,11 +260,12 @@ private fun RootContent(vm: MainViewModel) {
             topBar = {},
             bottomBar = {},
         ) { pad ->
-            // Отступ снизу = высота дока + небольшой зазор + системная навигационная панель,
-            // чтобы контент не уходил под док и под системную «полосу».
+            // Компактный отступ под оригинальную капсулу (~64dp) + зазор + системную панель.
+            // Большой dockHeight больше не раздувает пустую прямоугольную зону снизу.
             val bottomPad = if (s.dockStyle == DockStyle.HIDDEN) navBarDp
-            else (s.dockHeight + 24).dp + navBarDp
+            else 88.dp + navBarDp
             Box(Modifier.padding(pad).padding(bottom = bottomPad).fillMaxSize()) {
+
 
                 when {
                     !granted -> PermissionScreen { permLauncher.launch(perms) }
