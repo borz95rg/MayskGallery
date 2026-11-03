@@ -28,12 +28,17 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -43,6 +48,7 @@ import com.maysk.gallery.data.AlbumView
 import com.maysk.gallery.data.AnimStyle
 import com.maysk.gallery.data.Keys
 import com.maysk.gallery.data.ThemePreset
+import com.maysk.gallery.data.DockStyle
 import com.maysk.gallery.data.UiSettings
 import kotlin.math.roundToInt
 
@@ -54,6 +60,7 @@ private val SettingsGold = Color(0xFFFFC83D)
 fun SettingsScreen(vm: MainViewModel, s: UiSettings) {
     val cs = MaterialTheme.colorScheme
     val pickCover = rememberCoverPicker(vm)
+    var customHue by remember { mutableStateOf(330f) }
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 28.dp),
@@ -81,34 +88,105 @@ fun SettingsScreen(vm: MainViewModel, s: UiSettings) {
             }
         }
 
-        SettingsGroup("ВНЕШНИЙ ВИД", "Тема, цвета и оформление") {
-            SettingsLabel("Тема галереи", "Структура оригинальной галереи сохраняется во всех темах")
-            ChipRow(ThemePreset.values().toList(), s.preset, { it.title }) { vm.set(Keys.PRESET, it.name) }
-
-            SettingsLabel("Акцентный цвет", "Выбери цвет кнопок и выделений")
-            Row(
-                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 2.dp),
-                horizontalArrangement = Arrangement.spacedBy(11.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                listOf(
-                    0xFF16C79A, 0xFFB88CFF, 0xFFFF5FB0, 0xFFFF7A59,
-                    0xFFFFC83D, 0xFF4ADE80, 0xFF36D1DC, 0xFF5B86E5,
-                ).forEach { c ->
-                    Box(
-                        Modifier.size(34.dp).clip(CircleShape).background(Color(c))
-                            .then(if (s.accent == c.toInt()) Modifier.border(3.dp, cs.onSurface, CircleShape) else Modifier)
-                            .clickable { vm.set(Keys.ACCENT, c.toInt()) },
-                        contentAlignment = Alignment.Center,
-                    ) { if (s.accent == c.toInt()) Text("✓", color = Color.Black, fontWeight = FontWeight.Bold) }
+        SettingsGroup("ТЕМА И ОФОРМЛЕНИЕ", "Новая система оформления Maysk Gallery") {
+            SettingsLabel("Готовые темы", "Цвета карточек, фона и текста меняются одновременно")
+            val presets = listOf(
+                ThemePreset.DEEP_BLUE, ThemePreset.ARCTIC, ThemePreset.VIOLET, ThemePreset.MINT_COAL,
+                ThemePreset.COPPER, ThemePreset.ROYAL_BLUE, ThemePreset.ICE_WIND, ThemePreset.DESERT,
+                ThemePreset.EMERALD, ThemePreset.DARK_MAGIC
+            )
+            presets.chunked(2).forEach { pair ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    pair.forEach { preset ->
+                        val chosen = s.preset == preset
+                        Box(
+                            Modifier.weight(1f).clip(RoundedCornerShape(16.dp))
+                                .background(when (preset) {
+                                    ThemePreset.ARCTIC -> Color(0xFFF8F9FA)
+                                    ThemePreset.ICE_WIND -> Color(0xFFE0F2FE)
+                                    ThemePreset.DEEP_BLUE -> Color(0xFF0D1B2A)
+                                    ThemePreset.VIOLET -> Color(0xFF1A0B2E)
+                                    ThemePreset.MINT_COAL -> Color(0xFF12181B)
+                                    ThemePreset.COPPER -> Color(0xFF2B1B17)
+                                    ThemePreset.ROYAL_BLUE -> Color(0xFF0A192F)
+                                    ThemePreset.DESERT -> Color(0xFF2A2421)
+                                    ThemePreset.EMERALD -> Color(0xFF0F2027)
+                                    else -> Color(0xFF050505)
+                                })
+                                .border(if (chosen) 2.dp else 1.dp, if (chosen) MaterialTheme.colorScheme.primary else cs.outline.copy(alpha=.35f), RoundedCornerShape(16.dp))
+                                .clickable { vm.set(Keys.PRESET, preset.name); vm.set(Keys.ACCENT, 0) }
+                                .padding(12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text((if (chosen) "✓ " else "") + preset.title,
+                                color = if (preset == ThemePreset.ARCTIC || preset == ThemePreset.ICE_WIND) Color(0xFF121212) else Color.White,
+                                fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                    if (pair.size == 1) Spacer(Modifier.weight(1f))
                 }
-                TextButton(onClick = { vm.set(Keys.ACCENT, 0) }) { Text("Авто") }
             }
-            SettingsSlider("Матовость стекла", "${(s.frost * 100).toInt()}%", s.frost, 0f..1f) { vm.set(Keys.FROST, it) }
-            SettingsSlider("Прозрачность панелей", "${(s.glassAlpha * 100).toInt()}%", s.glassAlpha, .2f..1f) { vm.set(Keys.GLASS, it) }
-            SettingsSlider("Закругление карточек", "${s.cornerPercent}%", s.cornerPercent.toFloat(), 0f..80f) { vm.set(Keys.CORNER, it.roundToInt()) }
-            SettingsLabel("Тень карточек", "Насколько выражен объём элементов")
-            ChipRow(listOf(0, 1, 2, 3), s.shadow, { listOf("Нет", "Мягкая", "Средняя", "Сильная")[it] }) { vm.set(Keys.SHADOW, it) }
+            SettingsLabel("Акцентный цвет", "Быстрые цвета для кнопок и выделений")
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                listOf(0xFF16C79A,0xFFB88CFF,0xFFFF5FB0,0xFFFF7A59,0xFFFFC83D,0xFF4ADE80,0xFF36D1DC,0xFF5B86E5,0xFF007AFF,0xFFE63946).forEach { c ->
+                    Box(Modifier.size(34.dp).clip(CircleShape).background(Color(c))
+                        .border(if (s.accent == c.toInt()) 3.dp else 0.dp, cs.onSurface, CircleShape)
+                        .clickable { vm.set(Keys.ACCENT,c.toInt()) }, contentAlignment=Alignment.Center) {
+                        if (s.accent == c.toInt()) Text("✓", color=Color.Black, fontWeight=FontWeight.Bold)
+                    }
+                }
+                TextButton(onClick={vm.set(Keys.ACCENT,0)}) { Text("Авто") }
+            }
+            SettingsLabel("Свой цвет", "Передвигай ползунок, чтобы выбрать оттенок")
+            Row(verticalAlignment=Alignment.CenterVertically) {
+                Box(Modifier.size(30.dp).clip(CircleShape).background(Color.hsv(customHue, .78f, .95f)))
+                Slider(value=customHue, onValueChange={customHue=it}, valueRange=0f..360f, modifier=Modifier.weight(1f))
+                TextButton(onClick={vm.set(Keys.ACCENT,Color.hsv(customHue,.78f,.95f).toArgb())}) { Text("Применить") }
+            }
+            SettingsSlider("Матовость стекла", "${(s.frost*100).toInt()}%", s.frost, 0f..1f) { vm.set(Keys.FROST,it) }
+            SettingsSlider("Прозрачность панелей", "${(s.glassAlpha*100).toInt()}%", s.glassAlpha, .2f..1f) { vm.set(Keys.GLASS,it) }
+            SettingsSlider("Закругление карточек", "${s.cornerPercent}%", s.cornerPercent.toFloat(), 0f..80f) { vm.set(Keys.CORNER,it.roundToInt()) }
+            SettingsLabel("Тень карточек")
+            ChipRow(listOf(0,1,2,3),s.shadow,{listOf("Нет","Мягкая","Средняя","Сильная")[it]}) { vm.set(Keys.SHADOW,it) }
+        }
+
+        SettingsGroup("НИЖНЯЯ ПАНЕЛЬ", "Настрой навигацию и сразу смотри результат") {
+            ChipRow(DockStyle.values().toList(), s.dockStyle, { it.title }) { vm.set(Keys.DOCK_STYLE,it) }
+            SettingsLabel("Цвет панели", "Выбери оттенок нижней панели")
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+                listOf(0xFF17171C,0xFF25252B,0xFF263B55,0xFF472A5D,0xFF17483F,0xFF6A3544,0xFF8A5A32,0xFFE8EDF3).forEach { c ->
+                    Box(Modifier.size(34.dp).clip(CircleShape).background(Color(c))
+                        .border(if (s.dockColor == c.toInt()) 3.dp else 1.dp, cs.onSurface, CircleShape)
+                        .clickable { vm.set(Keys.DOCK_COLOR,c.toInt()) })
+                }
+            }
+            SettingsSwitch("Текст на кнопках", "Показывать подписи Фото, Альбомы и Видео", s.dockShowLabels) { vm.set(Keys.DOCK_LABELS,it) }
+            SettingsSlider("Высота панели", "${s.dockHeight} dp", s.dockHeight.toFloat(), 60f..140f) { vm.set(Keys.DOCK_HEIGHT,it.roundToInt()) }
+            Card(colors=CardDefaults.cardColors(containerColor=Color(s.dockColor)), shape=RoundedCornerShape(24.dp)) {
+                Row(Modifier.fillMaxWidth().height(s.dockHeight.coerceIn(60,140).dp).padding(12.dp), horizontalArrangement=Arrangement.SpaceEvenly, verticalAlignment=Alignment.CenterVertically) {
+                    listOf("Фото","Альбомы","Видео").forEach { label ->
+                        Column(horizontalAlignment=Alignment.CenterHorizontally) {
+                            Text(when(label){"Фото"->"▧";"Альбомы"->"✦";else->"▷"}, color=Color.White, fontSize=20.sp)
+                            if (s.dockShowLabels) Text(label, color=Color.White, fontSize=12.sp)
+                        }
+                    }
+                }
+            }
+        }
+
+        SettingsGroup("РАЗМЕР ТЕКСТА", "Изменяй шрифт и проверяй результат в реальном времени") {
+            SettingsSlider("Размер шрифта", "${(s.fontScale*100).toInt()}%", s.fontScale, .8f..1.6f) { vm.set(Keys.FONT,it) }
+            Card(colors=CardDefaults.cardColors(containerColor=cs.surfaceVariant), shape=RoundedCornerShape(18.dp)) {
+                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement=Arrangement.spacedBy(6.dp)) {
+                    Text("Предварительный просмотр", color=cs.onSurface, fontSize=11.sp)
+                    Text("Maysk Gallery", color=cs.onSurface, fontSize=22.sp, fontWeight=FontWeight.Bold)
+                    Text("Красивые моменты всегда рядом", color=cs.onSurfaceVariant, fontSize=14.sp)
+                    Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                        Button(onClick={}, enabled=false) { Text("Кнопка", fontSize=14.sp) }
+                        Text("Фото  •  Альбомы  •  Видео", color=cs.primary, fontSize=12.sp)
+                    }
+                }
+            }
         }
 
         SettingsGroup("ФОТО И АЛЬБОМЫ", "Как отображаются воспоминания") {
@@ -169,7 +247,6 @@ fun SettingsScreen(vm: MainViewModel, s: UiSettings) {
             SettingsSlider("Интервал слайд-шоу", "${s.slideshowSeconds} сек.", s.slideshowSeconds.toFloat(), 2f..15f) { vm.set(Keys.SLIDESHOW_SECONDS, it.roundToInt()) }
             SettingsLabel("Анимация появления")
             ChipRow(AnimStyle.values().toList(), s.animation, { it.title }) { vm.set(Keys.ANIM, it.name) }
-            SettingsSlider("Размер текста", "${(s.fontScale * 100).toInt()}%", s.fontScale, .8f..1.4f) { vm.set(Keys.FONT, it) }
         }
 
         SettingsGroup("ОБНОВЛЕНИЯ", "Версия и актуальность приложения") {

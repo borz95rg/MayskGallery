@@ -32,99 +32,71 @@ import com.maysk.gallery.data.ThemePreset
 import com.maysk.gallery.data.UiSettings
 
 private fun isDark(s: UiSettings, system: Boolean): Boolean = when (s.preset) {
-    ThemePreset.ORIGINAL, ThemePreset.GLASS, ThemePreset.LUXURY, ThemePreset.NEON -> true
+    ThemePreset.ARCTIC, ThemePreset.ICE_WIND -> false
+    ThemePreset.ORIGINAL, ThemePreset.GLASS, ThemePreset.LUXURY, ThemePreset.NEON,
+    ThemePreset.DEEP_BLUE, ThemePreset.VIOLET, ThemePreset.MINT_COAL,
+    ThemePreset.COPPER, ThemePreset.ROYAL_BLUE, ThemePreset.DESERT,
+    ThemePreset.EMERALD, ThemePreset.DARK_MAGIC -> true
     else -> system
 }
 
 @Composable
 private fun schemeFor(s: UiSettings, dark: Boolean): ColorScheme {
-    val ctx = LocalContext.current
-    return when (s.preset) {
-        ThemePreset.ORIGINAL -> darkColorScheme(
-            primary = Color(0xFFEDEDED), onPrimary = Color.Black,
-            background = Color.Black, onBackground = Color.White,
-            surface = Color(0xFF121214), onSurface = Color.White,
-            surfaceVariant = Color(0xFF232326), onSurfaceVariant = Color(0xFF9A9AA2),
+    fun scheme(bg: Long, surface: Long, accent: Long, variant: Long, light: Boolean): ColorScheme {
+        val background = Color(bg)
+        val card = Color(surface)
+        val primary = Color(accent)
+        val primaryText = if (primary.luminance() > .5f) Color(0xFF121212) else Color.White
+        val text = if (background.luminance() > .5f) Color(0xFF121212) else Color.White
+        val secondary = if (background.luminance() > .5f) Color(0xFF5F6368) else Color(0xFF9AA0A6)
+        return if (light) lightColorScheme(
+            primary = primary, onPrimary = primaryText,
+            background = background, onBackground = text,
+            surface = card, onSurface = if (card.luminance() > .5f) Color(0xFF121212) else Color.White,
+            surfaceVariant = Color(variant),
+            onSurfaceVariant = if (Color(variant).luminance() > .5f) Color(0xFF5F6368) else Color(0xFF9AA0A6),
+            secondary = primary, onSecondary = primaryText
+        ) else darkColorScheme(
+            primary = primary, onPrimary = primaryText,
+            background = background, onBackground = text,
+            surface = card, onSurface = Color.White,
+            surfaceVariant = Color(variant), onSurfaceVariant = secondary,
+            secondary = primary, onSecondary = primaryText
         )
-
-        ThemePreset.CLASSIC ->
-            if (dark) darkColorScheme(
-                primary = Color(0xFF6AA4FF), onPrimary = Color(0xFF00224D),
-                background = Color(0xFF101114), onBackground = Color(0xFFE8E8EC),
-                surface = Color(0xFF1B1C20), onSurface = Color(0xFFE8E8EC),
-                surfaceVariant = Color(0xFF2A2B31), onSurfaceVariant = Color(0xFFB9BAC2),
-            ) else lightColorScheme(
-                primary = Color(0xFF1E6FE0), onPrimary = Color.White,
-                background = Color(0xFFF6F6F8), onBackground = Color(0xFF16171A),
-                surface = Color.White, onSurface = Color(0xFF16171A),
-                surfaceVariant = Color(0xFFE9E9EE), onSurfaceVariant = Color(0xFF5A5B63),
-            )
-
-        ThemePreset.MODERN ->
-            if (Build.VERSION.SDK_INT >= 31) {
-                if (dark) dynamicDarkColorScheme(ctx) else dynamicLightColorScheme(ctx)
-            } else if (dark) darkColorScheme() else lightColorScheme()
-
-        ThemePreset.GLASS -> darkColorScheme(
-            primary = Color(0xFFB88CFF), onPrimary = Color(0xFF1B0A3C),
-            secondary = Color(0xFFFF5FB0),
-            background = Color(0xFF120A2A), onBackground = Color.White,
-            surface = Color(0xFF2A1A5E), onSurface = Color.White,
-            surfaceVariant = Color(0xFF3A2878), onSurfaceVariant = Color(0xFFD9CCFF),
-        )
-
-        ThemePreset.LUXURY -> darkColorScheme(
-            primary = Color(0xFFD4AF37), onPrimary = Color.Black,
-            secondary = Color(0xFFF1D77A),
-            background = Color(0xFF0B0B0B), onBackground = Color(0xFFF5EBD0),
-            surface = Color(0xFF181818), onSurface = Color(0xFFF5EBD0),
-            surfaceVariant = Color(0xFF242424), onSurfaceVariant = Color(0xFFCDB877),
-        )
-
-        ThemePreset.NEON -> darkColorScheme(
-            primary = Color(0xFFFF2BD6), onPrimary = Color.Black,
-            secondary = Color(0xFF00E5FF),
-            background = Color(0xFF07040F), onBackground = Color.White,
-            surface = Color(0xFF1A0C33), onSurface = Color.White,
-            surfaceVariant = Color(0xFF28104D), onSurfaceVariant = Color(0xFF8FF3FF),
-        )
-
-        ThemePreset.MINIMAL ->
-            if (dark) darkColorScheme(
-                primary = Color.White, onPrimary = Color.Black,
-                background = Color.Black, onBackground = Color.White,
-                surface = Color(0xFF111111), onSurface = Color.White,
-                surfaceVariant = Color(0xFF1C1C1C), onSurfaceVariant = Color(0xFFAAAAAA),
-            ) else lightColorScheme(
-                primary = Color.Black, onPrimary = Color.White,
-                background = Color.White, onBackground = Color.Black,
-                surface = Color(0xFFF4F4F4), onSurface = Color.Black,
-                surfaceVariant = Color(0xFFEAEAEA), onSurfaceVariant = Color(0xFF555555),
-            )
-
-        ThemePreset.ISTYLE ->
-            if (dark) darkColorScheme(
-                primary = Color(0xFF0A84FF), onPrimary = Color.White,
-                background = Color.Black, onBackground = Color.White,
-                surface = Color(0xFF1C1C1E), onSurface = Color.White,
-                surfaceVariant = Color(0xFF2C2C2E), onSurfaceVariant = Color(0xFF9A9AA0),
-            ) else lightColorScheme(
-                primary = Color(0xFF0A84FF), onPrimary = Color.White,
-                background = Color(0xFFF2F2F7), onBackground = Color.Black,
-                surface = Color.White, onSurface = Color.Black,
-                surfaceVariant = Color(0xFFE5E5EA), onSurfaceVariant = Color(0xFF6C6C70),
-            )
     }
+    val result = when (s.preset) {
+        ThemePreset.DEEP_BLUE -> scheme(0xFF0D1B2A, 0xFF17283A, 0xFF1B263B, 0xFF24384D, false)
+        ThemePreset.ARCTIC -> scheme(0xFFF8F9FA, 0xFFFFFFFF, 0xFF007AFF, 0xFFE9EEF4, true)
+        ThemePreset.VIOLET -> scheme(0xFF1A0B2E, 0xFF281640, 0xFF7B2CBF, 0xFF382052, false)
+        ThemePreset.MINT_COAL -> scheme(0xFF12181B, 0xFF1D292D, 0xFF00B4D8, 0xFF29383D, false)
+        ThemePreset.COPPER -> scheme(0xFF2B1B17, 0xFF3B2923, 0xFFE07A5F, 0xFF49332B, false)
+        ThemePreset.ROYAL_BLUE -> scheme(0xFF0A192F, 0xFF142943, 0xFF64FFDA, 0xFF203B58, false)
+        ThemePreset.ICE_WIND -> scheme(0xFFE0F2FE, 0xFFF0F9FF, 0xFF0284C7, 0xFFBAE6FD, true)
+        ThemePreset.DESERT -> scheme(0xFF2A2421, 0xFF3A302B, 0xFFF4A261, 0xFF4A3B32, false)
+        ThemePreset.EMERALD -> scheme(0xFF0F2027, 0xFF19333A, 0xFF2EC4B6, 0xFF25434A, false)
+        ThemePreset.DARK_MAGIC -> scheme(0xFF050505, 0xFF151515, 0xFFE63946, 0xFF242424, false)
+        ThemePreset.ORIGINAL -> scheme(0xFF000000, 0xFF121214, 0xFFEDEDED, 0xFF232326, false)
+        ThemePreset.CLASSIC -> if (dark) scheme(0xFF101114, 0xFF1B1C20, 0xFF6AA4FF, 0xFF2A2B31, false) else scheme(0xFFF6F6F8, 0xFFFFFFFF, 0xFF1E6FE0, 0xFFE9E9EE, true)
+        ThemePreset.MODERN -> if (Build.VERSION.SDK_INT >= 31) {
+            val ctx = LocalContext.current
+            if (dark) dynamicDarkColorScheme(ctx) else dynamicLightColorScheme(ctx)
+        } else if (dark) darkColorScheme() else lightColorScheme()
+        ThemePreset.GLASS -> scheme(0xFF120A2A, 0xFF2A1A5E, 0xFFB88CFF, 0xFF3A2878, false)
+        ThemePreset.LUXURY -> scheme(0xFF0B0B0B, 0xFF181818, 0xFFD4AF37, 0xFF242424, false)
+        ThemePreset.NEON -> scheme(0xFF07040F, 0xFF1A0C33, 0xFFFF2BD6, 0xFF28104D, false)
+        ThemePreset.MINIMAL -> if (dark) scheme(0xFF000000, 0xFF111111, 0xFFFFFFFF, 0xFF1C1C1C, false) else scheme(0xFFFFFFFF, 0xFFF4F4F4, 0xFF000000, 0xFFEAEAEA, true)
+        ThemePreset.ISTYLE -> if (dark) scheme(0xFF000000, 0xFF1C1C1E, 0xFF0A84FF, 0xFF2C2C2E, false) else scheme(0xFFF2F2F7, 0xFFFFFFFF, 0xFF0A84FF, 0xFFE5E5EA, true)
+    }
+    return if (s.accent != 0) {
+        val a = Color(s.accent)
+        result.copy(primary = a, onPrimary = if (a.luminance() > .5f) Color(0xFF121212) else Color.White)
+    } else result
 }
 
 @Composable
 fun MayskTheme(s: UiSettings, content: @Composable () -> Unit) {
     val dark = isDark(s, isSystemInDarkTheme())
-    var scheme = schemeFor(s, dark)
-    if (s.accent != 0) {
-        val a = Color(s.accent)
-        scheme = scheme.copy(primary = a, onPrimary = if (a.luminance() > 0.5f) Color.Black else Color.White)
-    }
+    val scheme = schemeFor(s, dark)
     val typo = if (s.preset == ThemePreset.ORIGINAL) {
         val b = Typography()
         val sf = { st: androidx.compose.ui.text.TextStyle ->
@@ -146,9 +118,9 @@ fun MayskTheme(s: UiSettings, content: @Composable () -> Unit) {
 fun appBackground(s: UiSettings): Brush {
     val c = MaterialTheme.colorScheme
     return when (s.preset) {
-        ThemePreset.GLASS -> Brush.verticalGradient(listOf(Color(0xFF2B1466), Color(0xFF120A2A), Color(0xFF3A0F55)))
+        ThemePreset.GLASS, ThemePreset.VIOLET -> Brush.verticalGradient(listOf(Color(0xFF2B1466), Color(0xFF120A2A), Color(0xFF3A0F55)))
         ThemePreset.NEON -> Brush.verticalGradient(listOf(Color(0xFF1B0638), Color(0xFF07040F), Color(0xFF05222E)))
-        ThemePreset.LUXURY -> Brush.verticalGradient(listOf(Color(0xFF1A1405), Color(0xFF0B0B0B)))
+        ThemePreset.LUXURY, ThemePreset.COPPER -> Brush.verticalGradient(listOf(Color(0xFF1A1405), Color(0xFF0B0B0B)))
         else -> Brush.verticalGradient(listOf(c.background, c.background))
     }
 }

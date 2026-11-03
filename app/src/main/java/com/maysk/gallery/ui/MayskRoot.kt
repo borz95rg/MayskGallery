@@ -49,6 +49,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import com.maysk.gallery.MainViewModel
+import com.maysk.gallery.data.DockStyle
 import com.maysk.gallery.data.MediaItem
 import com.maysk.gallery.update.ApkInstaller
 
@@ -221,14 +222,14 @@ private fun RootContent(vm: MainViewModel) {
             topBar = {},
             bottomBar = {},
         ) { pad ->
-            Box(Modifier.padding(pad).padding(bottom = 100.dp).fillMaxSize()) {
+            Box(Modifier.padding(pad).padding(bottom = if (s.dockStyle == DockStyle.HIDDEN) 0.dp else (s.dockHeight + 24).dp).fillMaxSize()) {
                 when {
                     !granted -> PermissionScreen { permLauncher.launch(perms) }
                     !loaded -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                         Text("Загрузка…", color = MaterialTheme.colorScheme.onBackground)
                     }
                     else -> when (tab) {
-                        0 -> GalleryScreen(items, s,
+                        0 -> GalleryScreen(items.filterNot { it.isVideo }, s,
                             onOpen = { list, i -> viewer = ViewerState(list, i) },
                             onDeleteSelected = { selected -> pendingBulkDelete = selected })
                         1 -> AlbumsScreen(items, s, openAlbum, { openAlbum = it }) { list, i -> viewer = ViewerState(list, i) }
@@ -303,6 +304,7 @@ private fun RootContent(vm: MainViewModel) {
         if (viewer == null && editing == null && tab != 14) {
             OriginalDock(
                 selected = when (tab) { 0 -> 0; 6 -> 2; else -> 1 },
+                s = s,
                 modifier = Modifier.align(Alignment.BottomCenter),
             ) { tab = when (it) { 0 -> 0; 2 -> 6; else -> 5 } }
         }

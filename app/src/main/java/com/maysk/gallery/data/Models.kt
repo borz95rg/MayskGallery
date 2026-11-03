@@ -26,14 +26,23 @@ data class AlbumInfo(val name: String, val items: List<MediaItem>) {
 }
 
 enum class ThemePreset(val title: String) {
-    ORIGINAL("Original"),
-    CLASSIC("Classic"),
-    MODERN("Modern"),
-    GLASS("Glass"),
-    LUXURY("Luxury"),
-    NEON("Neon"),
-    MINIMAL("Minimal"),
-    ISTYLE("iStyle"),
+    DEEP_BLUE("Глубокий Синий"),
+    ARCTIC("Арктический Свет"),
+    VIOLET("Фиолетовое Поле"),
+    MINT_COAL("Мята и Уголь"),
+    COPPER("Медный Вечер"),
+    ROYAL_BLUE("Королевский Синий"),
+    ICE_WIND("Ледяной Ветер"),
+    DESERT("Пустынная Дюна"),
+    EMERALD("Emerald Haven"),
+    DARK_MAGIC("Тёмная магия"),
+    // Совместимость со старыми сохранёнными настройками
+    ORIGINAL("Original"), CLASSIC("Classic"), MODERN("Modern"),
+    GLASS("Glass"), LUXURY("Luxury"), NEON("Neon"), MINIMAL("Minimal"), ISTYLE("iStyle")
+}
+
+enum class DockStyle(val title: String) {
+    HIDDEN("Скрытая"), FLAT("Плоская"), FLOATING("Полукруглая"), VOLUMETRIC("Объёмная")
 }
 
 enum class AnimStyle(val title: String) {
@@ -64,6 +73,10 @@ data class UiSettings(
     val albumView: AlbumView = AlbumView.CARDS,
     val navTop: Boolean = false,
     val fontScale: Float = 1f,
+    val dockStyle: DockStyle = DockStyle.FLOATING,
+    val dockColor: Int = 0xFF25252B.toInt(),
+    val dockShowLabels: Boolean = true,
+    val dockHeight: Int = 110,
     val autoUpdate: Boolean = true,
     val favorites: Set<String> = emptySet(),
     /** Свои картинки: 0 = баннер, 1..4 = обложки альбомов. Пусто = брать из галереи. */

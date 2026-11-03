@@ -24,6 +24,10 @@ object Keys {
     val ALBUM_VIEW = stringPreferencesKey("album_view")
     val NAV_TOP = booleanPreferencesKey("nav_top")
     val FONT = floatPreferencesKey("font")
+    val DOCK_STYLE = stringPreferencesKey("dock_style")
+    val DOCK_COLOR = intPreferencesKey("dock_color")
+    val DOCK_LABELS = booleanPreferencesKey("dock_labels")
+    val DOCK_HEIGHT = intPreferencesKey("dock_height")
     val AUTO_UPDATE = booleanPreferencesKey("auto_update")
     val FAVORITES = stringSetPreferencesKey("favorites")
     val ACCENT = intPreferencesKey("accent")
@@ -60,7 +64,11 @@ class SettingsRepository(private val context: Context) {
             animation = enumOr(p[Keys.ANIM], d.animation),
             albumView = enumOr(p[Keys.ALBUM_VIEW], d.albumView),
             navTop = p[Keys.NAV_TOP] ?: d.navTop,
-            fontScale = (p[Keys.FONT] ?: d.fontScale).coerceIn(0.8f, 1.4f),
+            fontScale = (p[Keys.FONT] ?: d.fontScale).coerceIn(0.8f, 1.6f),
+            dockStyle = enumOr(p[Keys.DOCK_STYLE], d.dockStyle),
+            dockColor = p[Keys.DOCK_COLOR] ?: d.dockColor,
+            dockShowLabels = p[Keys.DOCK_LABELS] ?: d.dockShowLabels,
+            dockHeight = (p[Keys.DOCK_HEIGHT] ?: d.dockHeight).coerceIn(60, 140),
             autoUpdate = p[Keys.AUTO_UPDATE] ?: d.autoUpdate,
             favorites = p[Keys.FAVORITES] ?: d.favorites,
             covers = Keys.COVERS.map { p[it] ?: "" },
@@ -93,7 +101,8 @@ class SettingsRepository(private val context: Context) {
     suspend fun resetLook() {
         context.dataStore.edit { p ->
             listOf(Keys.PRESET, Keys.COLUMNS, Keys.CORNER, Keys.GLASS, Keys.SHADOW, Keys.ANIM,
-                Keys.ALBUM_VIEW, Keys.NAV_TOP, Keys.FONT, Keys.ACCENT, Keys.FROST).forEach { p.remove(it) }
+                Keys.ALBUM_VIEW, Keys.NAV_TOP, Keys.FONT, Keys.ACCENT, Keys.FROST,
+                Keys.DOCK_STYLE, Keys.DOCK_COLOR, Keys.DOCK_LABELS, Keys.DOCK_HEIGHT).forEach { p.remove(it) }
             Keys.COVERS.forEach { p.remove(it) }
         }
     }
