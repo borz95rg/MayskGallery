@@ -355,32 +355,16 @@ private fun CollageFeature(items: List<MediaItem>, s: UiSettings, onBack: () -> 
     val writePermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) saveCurrentCollage() else message = "Для сохранения коллажа нужно разрешить доступ к файлам."
     }
+    // Новый компактный набор авторских шаблонов вместо старого каталога повторяющихся макетов.
     val layouts = remember(photoCount) {
-        val families = listOf(
-            "Редакционная сетка", "Обложка слева", "Обложка справа", "Панорама сверху", "Панорама снизу",
-            "Центральная история", "Киноплёнка", "Соты", "Журнал", "Скрапбук", "Круговая галерея",
-            "Две колонки", "Путевой дневник", "Динамика", "Центральный портрет", "Фото-лента",
-            "Треугольный ритм", "Портрет в центре", "Асимметричный угол", "Арт-мозаика"
+        listOf(
+            CollageLayoutSpec(12, "Путешествие", "Панорамная история · ${photoCount} фото", "Путешествие"),
+            CollageLayoutSpec(5, "Романтика", "Мягкая композиция с акцентом", "Романтика"),
+            CollageLayoutSpec(18, "Премиум", "Асимметричная обложка", "Премиум"),
+            CollageLayoutSpec(9, "Скрапбук", "Живой фотоальбом", "Скрапбук"),
+            CollageLayoutSpec(0, "Классика", "Чистая сбалансированная сетка", "Классика"),
+            CollageLayoutSpec(6, "Кино", "Кадры в стиле киноплёнки", "Кино"),
         )
-        val categories = listOf("Классика", "Журнальные", "Мозаика", "Асимметрия", "Истории", "Креатив", "Романтика", "Путешествия", "Портреты", "Геометрия")
-        // Remove the previous 100-item pseudo-catalog: it repeated the same 20 geometries
-        // five times. Keep one clear preset per layout family instead.
-        (0 until families.size).map { id ->
-            val family = id
-            val category = when (family) {
-                1,2,8 -> "Журнальные"
-                5,10 -> "Романтика"
-                6,15 -> "Истории"
-                7,13,16 -> "Геометрия"
-                9 -> "Семья"
-                3,4,12 -> "Путешествия"
-                14,17 -> "Портреты"
-                19 -> "Природа"
-                18 -> "Асимметрия"
-                else -> categories[family % categories.size]
-            }
-            CollageLayoutSpec(id, families[family], "${photoCount} фото · офлайн-макет", category)
-        }
     }
     val visibleLayouts = remember(layouts, selectedCategory) { if (selectedCategory == "Все") layouts else layouts.filter { it.category == selectedCategory } }
     androidx.activity.compose.BackHandler(enabled = stage > 0) { stage = (stage - 1).coerceAtLeast(0) }
@@ -390,20 +374,20 @@ private fun CollageFeature(items: List<MediaItem>, s: UiSettings, onBack: () -> 
             0 -> {
                 Text("Сколько фотографий будет в коллаже?", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp))
                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    (2..8).forEach { n ->
+                    (2..10).forEach { n ->
                         TextButton(onClick = { photoCount = n; stage = 1 }) {
                             Text(n.toString(), color = if (photoCount == n) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
                         }
                     }
                 }
-                Text("После выбора количества увидишь готовые композиции с примерами фотографий. Все действия выполняются на телефоне.", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp))
+                Text("Выбери от 2 до 10 фотографий, затем шаблон. Можно менять порядок снимков, заменять отдельные фото и добавить подпись. Коллаж собирается и сохраняется на телефоне.", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp))
             }
             1 -> {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp)) {
                     TextButton(onClick = { stage = 0 }) { Text("← Количество") }
                     Text("$photoCount фотографий", color = MaterialTheme.colorScheme.primary)
                 }
-                Text("Выбери готовую композицию. В превью показаны фотографии из твоей галереи.", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                Text("Шесть новых авторских стилей MayskGallery. Нажми на шаблон, чтобы перейти к выбору фотографий.", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
                 Text("Готовые композиции для $photoCount фотографий · выбери подходящий макет", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     (listOf("Все") + layouts.map { it.category }.distinct()).forEach { category ->
@@ -562,7 +546,7 @@ private fun decodeForCollage(context: android.content.Context, uri: Uri): Bitmap
 }
 
 private fun saveCollage(context: android.content.Context, items: List<MediaItem>, layout: Int, caption: String): Uri? {
-    if (items.size !in 2..8) return null
+    if (items.size !in 2..10) return null
     var outputUri: Uri? = null
     var bitmap: Bitmap? = null
     return try {
