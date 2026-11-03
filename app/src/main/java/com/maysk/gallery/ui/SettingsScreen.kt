@@ -162,7 +162,7 @@ fun SettingsScreen(vm: MainViewModel, s: UiSettings) {
                         .clickable { vm.set(Keys.TEXT_COLOR, 0) },
                     contentAlignment = Alignment.Center
                 ) { Text("A", fontSize = 11.sp, color = Color.White) }
-                listOf(0xFF121212, 0xFFFFFFFF, 0xFFEDEDED, 0xFF5F6368, 0xFF007AFF, 0xFFFFC83D).forEach { c ->
+                listOf(0xFF121212.toInt(), 0xFFFFFFFF.toInt(), 0xFFEDEDED.toInt(), 0xFF5F6368.toInt(), 0xFF007AFF.toInt(), 0xFFFFC83D.toInt()).forEach { c ->
                     val selected = s.textColor == c
                     Box(
                         Modifier.size(34.dp).clip(CircleShape).background(Color(c))
@@ -173,6 +173,7 @@ fun SettingsScreen(vm: MainViewModel, s: UiSettings) {
                         if (selected) Text("✓", color = if (Color(c).luminance() > 0.5f) Color.Black else Color.White, fontWeight = FontWeight.Bold)
                     }
                 }
+
             }
             SettingsLabel("Фон главного экрана", "Любое фото вместо цвета темы")
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
