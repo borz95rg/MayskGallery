@@ -410,8 +410,8 @@ private fun androidx.compose.foundation.layout.RowScope.QuickCard(icon: ImageVec
 
 /**
  * Плавающая полупрозрачная нижняя панель.
- * Несколько визуальных стилей (капсула, пилюля, подчёркивание, обводка, свечение…).
- * Контент галереи уходит под панель. selected: 0=фото, 1=альбомы, 2=видео.
+ * Стили: капсула, macOS Dock, iOS Tab Bar, пилюля, подчёркивание, обводка, свечение…
+ * selected: 0=фото, 1=альбомы, 2=видео.
  */
 @Composable
 fun OriginalDock(selected: Int, s: UiSettings, modifier: Modifier = Modifier, onSelect: (Int) -> Unit) {
@@ -421,8 +421,9 @@ fun OriginalDock(selected: Int, s: UiSettings, modifier: Modifier = Modifier, on
     val glassAlpha = when (s.dockStyle) {
         DockStyle.VOLUMETRIC -> 0.62f
         DockStyle.FLAT -> 0.42f
-        DockStyle.MINIMAL -> 0.28f
-        else -> 0.36f // очень прозрачное стекло
+        DockStyle.MINIMAL, DockStyle.IOS -> 0.30f
+        DockStyle.MACOS -> 0.40f
+        else -> 0.36f
     }
     val bg = base.copy(alpha = glassAlpha)
     val onDock = if (base.luminance() > 0.5f) Color(0xFF121212) else Color.White
@@ -431,15 +432,210 @@ fun OriginalDock(selected: Int, s: UiSettings, modifier: Modifier = Modifier, on
     val accent = MaterialTheme.colorScheme.primary
     val style = s.dockStyle
 
-    val isCapsule = style == DockStyle.FLOATING || style == DockStyle.VOLUMETRIC
-    val barHeight = if (isCapsule) 62.dp else 56.dp
+    when (style) {
+        DockStyle.FLOATING, DockStyle.VOLUMETRIC -> DockCapsule(
+            selected, s, base, glassAlpha, onDock, muted, borderColor, accent, modifier, onSelect
+        )
+        DockStyle.MACOS -> DockMacOS(
+            selected, s, bg, onDock, muted, borderColor, accent, modifier, onSelect
+        )
+        DockStyle.IOS -> DockIOS(
+            selected, s, bg, onDock, muted, borderColor, accent, modifier, onSelect
+        )
+        else -> DockGeneric(
+            selected, s, style, bg, onDock, muted, borderColor, accent, modifier, onSelect
+        )
+    }
+}
+
+/** Стекло · капсула — большая круглая кнопка по центру */
+@Composable
+private fun DockCapsule(
+    selected: Int, s: UiSettings, base: Color, glassAlpha: Float,
+    onDock: Color, muted: Color, borderColor: Color, accent: Color,
+    modifier: Modifier, onSelect: (Int) -> Unit
+) {
+    val barHeight = 62.dp
+    val shape = RoundedCornerShape(38.dp)
+    Box(
+        modifier
+            .fillMaxWidth()
+            .windowInsetsPadding(WindowInsets.navigationBars)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(barHeight)
+                .shadow(18.dp, shape)
+                .clip(shape)
+                .background(base.copy(alpha = glassAlpha))
+                .background(Color.White.copy(alpha = 0.05f + s.frost * 0.10f))
+                .border(1.dp, borderColor, shape)
+        )
+        Row(
+            Modifier.fillMaxWidth().height(barHeight),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            DockSimpleItem(Icons.Filled.Landscape, "фото", selected == 0, s.dockShowLabels, onDock, muted, accent, Modifier.weight(1f)) { onSelect(0) }
+            Spacer(Modifier.weight(1f))
+            DockSimpleItem(Icons.Outlined.VideoLibrary, "видео", selected == 2, s.dockShowLabels, onDock, muted, accent, Modifier.weight(1f)) { onSelect(2) }
+        }
+        Box(
+            Modifier
+                .size(70.dp)
+                .offset(y = (-12).dp)
+                .shadow(14.dp, CircleShape)
+                .clip(CircleShape)
+                .background(base.copy(alpha = (glassAlpha + 0.22f).coerceAtMost(0.78f)))
+                .background(Color.White.copy(alpha = 0.07f))
+                .border(1.5.dp, borderColor, CircleShape)
+                .clickable { onSelect(1) },
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(Icons.Filled.AutoAwesome, null, tint = if (selected == 1) accent else onDock, modifier = Modifier.size(26.dp))
+                if (s.dockShowLabels) Text("альбомы", fontSize = 11.sp, color = if (selected == 1) accent else onDock, maxLines = 1)
+            }
+        }
+    }
+}
+
+/** macOS Dock — стеклянная полка, иконки в скруглённых квадратах, центр крупнее */
+@Composable
+private fun DockMacOS(
+    selected: Int, s: UiSettings, bg: Color,
+    onDock: Color, muted: Color, borderColor: Color, accent: Color,
+    modifier: Modifier, onSelect: (Int) -> Unit
+) {
+    val shape = RoundedCornerShape(22.dp)
+    Box(
+        modifier
+            .fillMaxWidth()
+            .windowInsetsPadding(WindowInsets.navigationBars)
+            .padding(horizontal = 24.dp, vertical = 10.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            Modifier
+                .shadow(20.dp, shape)
+                .clip(shape)
+                .background(bg)
+                .background(Color.White.copy(alpha = 0.06f + s.frost * 0.10f))
+                .border(1.dp, borderColor, shape)
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            MacOSIcon(Icons.Filled.Landscape, "фото", selected == 0, s.dockShowLabels, onDock, muted, accent, false) { onSelect(0) }
+            MacOSIcon(Icons.Filled.AutoAwesome, "альбомы", selected == 1, s.dockShowLabels, onDock, muted, accent, true) { onSelect(1) }
+            MacOSIcon(Icons.Outlined.VideoLibrary, "видео", selected == 2, s.dockShowLabels, onDock, muted, accent, false) { onSelect(2) }
+        }
+    }
+}
+
+@Composable
+private fun MacOSIcon(
+    icon: ImageVector, label: String, selected: Boolean, showLabel: Boolean,
+    onDock: Color, muted: Color, accent: Color, isCenter: Boolean, onClick: () -> Unit
+) {
+    val size = if (isCenter && selected) 52.dp else if (isCenter) 48.dp else 42.dp
+    val iconSize = if (isCenter) 26.dp else 22.dp
+    Column(
+        Modifier.clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            Modifier
+                .size(size)
+                .then(if (selected) Modifier.shadow(10.dp, RoundedCornerShape(12.dp)) else Modifier)
+                .clip(RoundedCornerShape(12.dp))
+                .background(if (selected) accent.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.08f))
+                .border(if (selected) 1.5.dp else 0.dp, if (selected) accent.copy(alpha = 0.6f) else Color.Transparent, RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, null, tint = if (selected) accent else muted, modifier = Modifier.size(iconSize))
+        }
+        if (showLabel) {
+            Spacer(Modifier.height(4.dp))
+            Text(label, fontSize = 10.sp, color = if (selected) accent else muted, maxLines = 1)
+        }
+    }
+}
+
+/** iOS Tab Bar — тонкая полупрозрачная полоса, равные вкладки, акцент + линия снизу */
+@Composable
+private fun DockIOS(
+    selected: Int, s: UiSettings, bg: Color,
+    onDock: Color, muted: Color, borderColor: Color, accent: Color,
+    modifier: Modifier, onSelect: (Int) -> Unit
+) {
+    val shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+    Box(
+        modifier
+            .fillMaxWidth()
+            .windowInsetsPadding(WindowInsets.navigationBars)
+            .padding(horizontal = 0.dp, vertical = 0.dp),
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .background(bg)
+                .background(Color.White.copy(alpha = 0.04f + s.frost * 0.08f))
+                .border(width = 0.5.dp, color = borderColor.copy(alpha = 0.3f), shape = shape)
+                .padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            IOSTab(Icons.Filled.Landscape, "фото", selected == 0, s.dockShowLabels, onDock, muted, accent, Modifier.weight(1f)) { onSelect(0) }
+            IOSTab(Icons.Filled.AutoAwesome, "альбомы", selected == 1, s.dockShowLabels, onDock, muted, accent, Modifier.weight(1f)) { onSelect(1) }
+            IOSTab(Icons.Outlined.VideoLibrary, "видео", selected == 2, s.dockShowLabels, onDock, muted, accent, Modifier.weight(1f)) { onSelect(2) }
+        }
+    }
+}
+
+@Composable
+private fun IOSTab(
+    icon: ImageVector, label: String, selected: Boolean, showLabel: Boolean,
+    onDock: Color, muted: Color, accent: Color, modifier: Modifier, onClick: () -> Unit
+) {
+    Column(
+        modifier.clickable(onClick = onClick).padding(vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(icon, null, tint = if (selected) accent else muted, modifier = Modifier.size(24.dp))
+        if (showLabel) {
+            Spacer(Modifier.height(2.dp))
+            Text(label, fontSize = 10.sp, color = if (selected) accent else muted, maxLines = 1)
+        }
+        Spacer(Modifier.height(3.dp))
+        Box(
+            Modifier
+                .height(2.5.dp)
+                .fillMaxWidth(0.35f)
+                .clip(RoundedCornerShape(1.dp))
+                .background(if (selected) accent else Color.Transparent)
+        )
+    }
+}
+
+/** Остальные стили (пилюля, обводка, свечение, минимализм…) */
+@Composable
+private fun DockGeneric(
+    selected: Int, s: UiSettings, style: DockStyle, bg: Color,
+    onDock: Color, muted: Color, borderColor: Color, accent: Color,
+    modifier: Modifier, onSelect: (Int) -> Unit
+) {
+    val barHeight = 56.dp
     val hPad = if (style == DockStyle.FLAT || style == DockStyle.MINIMAL) 0.dp else 16.dp
     val shape = when (style) {
         DockStyle.FLAT, DockStyle.MINIMAL -> RoundedCornerShape(0.dp)
-        DockStyle.PILL, DockStyle.UNDERLINE, DockStyle.OUTLINE, DockStyle.GLOW -> RoundedCornerShape(28.dp)
-        else -> RoundedCornerShape(38.dp)
+        else -> RoundedCornerShape(28.dp)
     }
-
     Box(
         modifier
             .fillMaxWidth()
@@ -447,7 +643,6 @@ fun OriginalDock(selected: Int, s: UiSettings, modifier: Modifier = Modifier, on
             .padding(horizontal = hPad, vertical = 8.dp),
         contentAlignment = Alignment.BottomCenter
     ) {
-        // Фон панели
         Box(
             Modifier
                 .fillMaxWidth()
@@ -458,51 +653,18 @@ fun OriginalDock(selected: Int, s: UiSettings, modifier: Modifier = Modifier, on
                 .background(Color.White.copy(alpha = 0.05f + s.frost * 0.10f))
                 .border(if (style == DockStyle.FLAT || style == DockStyle.MINIMAL) 0.dp else 1.dp, borderColor, shape)
         )
-
-        // Содержимое
-        if (isCapsule) {
-            // Оригинальный стиль: большая круглая кнопка по центру
-            Row(
-                Modifier.fillMaxWidth().height(barHeight),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                DockSimpleItem(Icons.Filled.Landscape, "фото", selected == 0, s.dockShowLabels, onDock, muted, accent, Modifier.weight(1f)) { onSelect(0) }
-                Spacer(Modifier.weight(1f))
-                DockSimpleItem(Icons.Outlined.VideoLibrary, "видео", selected == 2, s.dockShowLabels, onDock, muted, accent, Modifier.weight(1f)) { onSelect(2) }
-            }
-            // Центральная круглая кнопка
-            Box(
-                Modifier
-                    .size(70.dp)
-                    .offset(y = (-12).dp)
-                    .shadow(14.dp, CircleShape)
-                    .clip(CircleShape)
-                    .background(base.copy(alpha = (glassAlpha + 0.22f).coerceAtMost(0.78f)))
-                    .background(Color.White.copy(alpha = 0.07f))
-                    .border(1.5.dp, borderColor, CircleShape)
-                    .clickable { onSelect(1) },
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Filled.AutoAwesome, null, tint = if (selected == 1) accent else onDock, modifier = Modifier.size(26.dp))
-                    if (s.dockShowLabels) Text("альбомы", fontSize = 11.sp, color = if (selected == 1) accent else onDock, maxLines = 1)
-                }
-            }
-        } else {
-            // Остальные стили: три равные кнопки
-            Row(
-                Modifier.fillMaxWidth().height(barHeight).padding(horizontal = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                DockStyledItem(Icons.Filled.Landscape, "фото", selected == 0, s.dockShowLabels, style, onDock, muted, accent, Modifier.weight(1f)) { onSelect(0) }
-                DockStyledItem(Icons.Filled.AutoAwesome, "альбомы", selected == 1, s.dockShowLabels, style, onDock, muted, accent, Modifier.weight(1f)) { onSelect(1) }
-                DockStyledItem(Icons.Outlined.VideoLibrary, "видео", selected == 2, s.dockShowLabels, style, onDock, muted, accent, Modifier.weight(1f)) { onSelect(2) }
-            }
+        Row(
+            Modifier.fillMaxWidth().height(barHeight).padding(horizontal = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            DockStyledItem(Icons.Filled.Landscape, "фото", selected == 0, s.dockShowLabels, style, onDock, muted, accent, Modifier.weight(1f)) { onSelect(0) }
+            DockStyledItem(Icons.Filled.AutoAwesome, "альбомы", selected == 1, s.dockShowLabels, style, onDock, muted, accent, Modifier.weight(1f)) { onSelect(1) }
+            DockStyledItem(Icons.Outlined.VideoLibrary, "видео", selected == 2, s.dockShowLabels, style, onDock, muted, accent, Modifier.weight(1f)) { onSelect(2) }
         }
     }
 }
+
 
 @Composable
 private fun DockSimpleItem(
