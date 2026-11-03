@@ -70,6 +70,13 @@ private fun RootContent(vm: MainViewModel) {
     val items by vm.items.collectAsStateWithLifecycle()
     val labels by vm.labels.collectAsStateWithLifecycle()
     val meta by vm.meta.collectAsStateWithLifecycle()
+    val faces by vm.faces.collectAsStateWithLifecycle()
+    val selfieYes by vm.selfieYes.collectAsStateWithLifecycle()
+    val selfieNo by vm.selfieNo.collectAsStateWithLifecycle()
+    val faceProgress by vm.faceProgress.collectAsStateWithLifecycle()
+    val selfieCount = remember(items, meta, faces, selfieYes, selfieNo) {
+        items.count { com.maysk.gallery.data.SelfieIndex.isSelfie(it, meta[it.key], faces[it.key], selfieYes, selfieNo) }
+    }
     val progress by vm.progress.collectAsStateWithLifecycle()
     val update by vm.update.collectAsStateWithLifecycle()
     val message by vm.message.collectAsStateWithLifecycle()
@@ -123,18 +130,40 @@ private fun RootContent(vm: MainViewModel) {
             else -> arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
         }
     }
-    var granted by remember {
-        mutableStateOf(perms.all { ContextCompat.checkSelfPermission(ctx, it) == PackageManager.PERMISSION_GRANTED })
+    // Android 14+: пользователь может дать «только выбранные фото» (READ_MEDIA_VISUAL_USER_SELECTED) —
+    // это тоже рабочий доступ, MediaStore просто вернёт выбранные файлы.
+    fun hasMediaAccess(): Boolean {
+        fun ok(p: String) = ContextCompat.checkSelfPermission(ctx, p) == PackageManager.PERMISSION_GRANTED
+        return when {
+            Build.VERSION.SDK_INT >= 34 ->
+                (ok(Manifest.permission.READ_MEDIA_IMAGES) && ok(Manifest.permission.READ_MEDIA_VIDEO)) ||
+                    ok(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
+            Build.VERSION.SDK_INT >= 33 -> ok(Manifest.permission.READ_MEDIA_IMAGES) || ok(Manifest.permission.READ_MEDIA_VIDEO)
+            else -> ok(Manifest.permission.READ_EXTERNAL_STORAGE)
+        }
     }
-    val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { res ->
-        granted = res.values.all { it }
-        if (granted) vm.reload()
+    fun partialAccess(): Boolean = Build.VERSION.SDK_INT >= 34 &&
+        ContextCompat.checkSelfPermission(ctx, Manifest.permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED &&
+        ContextCompat.checkSelfPermission(ctx, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED) == PackageManager.PERMISSION_GRANTED
+    var granted by remember { mutableStateOf(hasMediaAccess()) }
+    val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { _ ->
+        granted = hasMediaAccess()
+        if (granted) {
+            vm.reload()
+            if (partialAccess()) Toast.makeText(
+                ctx, "Открыт доступ только к выбранным фото. Чтобы видеть всю галерею, разрешите «Все фото» в настройках Android.",
+                Toast.LENGTH_LONG,
+            ).show()
+        }
     }
     // Перечитываем MediaStore после возврата из камеры или другого приложения:
     // новые фотографии появляются без ручного перезапуска галереи.
     DisposableEffect(lifecycleOwner, granted) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME && granted) vm.reload()
+            if (event == Lifecycle.Event.ON_RESUME) {
+                granted = hasMediaAccess()
+                if (granted) vm.reload()
+            }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
@@ -250,6 +279,7 @@ private fun RootContent(vm: MainViewModel) {
                             onPick = pickCover,
                             onSelfie = { tab = 14 },
                             meta = meta,
+                            selfieCountOverride = selfieCount,
                         )
                         6 -> {
                             val videos = items.filter { it.isVideo }
@@ -275,8 +305,13 @@ private fun RootContent(vm: MainViewModel) {
                         14 -> SelfieScreen(
                             items = items,
                             meta = meta,
+                            faces = faces,
+                            yes = selfieYes,
+                            no = selfieNo,
+                            progress = faceProgress,
                             settings = s,
                             onBack = { tab = 5 },
+                            onMark = { item, selfie -> vm.markSelfie(item, selfie) },
                             onOpen = { list, index -> viewer = ViewerState(list, index) },
                         )
                         13 -> PlacesScreen(

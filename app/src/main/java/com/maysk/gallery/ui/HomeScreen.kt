@@ -128,6 +128,7 @@ fun HomeScreen(
     onPick: (Int) -> Unit,
     onSelfie: () -> Unit,
     meta: Map<String, com.maysk.gallery.data.MediaMeta> = emptyMap(),
+    selfieCountOverride: Int = -1,
 ) {
     val cs = MaterialTheme.colorScheme
     val photos = remember(items) { items.filter { !it.isVideo } }
@@ -138,9 +139,10 @@ fun HomeScreen(
         items.filter { !it.isVideo }.mapNotNull { i -> meta[i.key]?.takeIf { it.hasGeo } }
             .map { Math.round(it.lat * 10) to Math.round(it.lon * 10) }.distinct().size
     }
-    val selfieCount = remember(items, meta) {
+    val selfieCount0 = remember(items, meta) {
         items.count { !it.isVideo && (com.maysk.gallery.data.MediaMetaIndex.looksLikeSelfieByName(it) || meta[it.key]?.selfie == true) }
     }
+    val selfieCount = if (selfieCountOverride >= 0) selfieCountOverride else selfieCount0
     val favs = remember(items, s.favorites) { items.filter { it.key in s.favorites } }
     val recent = remember(items) {
         val from = LocalDate.now().minusDays(30)

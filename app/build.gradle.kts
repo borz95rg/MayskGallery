@@ -90,5 +90,6 @@ dependencies {
     implementation("io.coil-kt:coil-video:2.7.0")
     // ИИ на устройстве (без интернета)
     implementation("com.google.mlkit:image-labeling:17.0.9")
+    implementation("com.google.mlkit:face-detection:16.1.7")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
 }

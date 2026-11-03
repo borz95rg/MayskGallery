@@ -8,7 +8,9 @@ import com.maysk.gallery.ai.AiIndex
 import com.maysk.gallery.data.MediaItem
 import com.maysk.gallery.data.MediaMeta
 import com.maysk.gallery.data.MediaMetaIndex
+import com.maysk.gallery.data.FaceInfo
 import com.maysk.gallery.data.MediaRepository
+import com.maysk.gallery.data.SelfieIndex
 import com.maysk.gallery.data.SecretVault
 import com.maysk.gallery.data.SettingsRepository
 import com.maysk.gallery.data.UiSettings
@@ -65,6 +67,53 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _meta = MutableStateFlow<Map<String, MediaMeta>>(emptyMap())
     val meta: StateFlow<Map<String, MediaMeta>> = _meta.asStateFlow()
 
+    private val selfieIndex = SelfieIndex(ctx)
+    private val _faces = MutableStateFlow<Map<String, FaceInfo>>(emptyMap())
+    val faces: StateFlow<Map<String, FaceInfo>> = _faces.asStateFlow()
+    private val _selfieYes = MutableStateFlow(selfieIndex.marksYes())
+    val selfieYes: StateFlow<Set<String>> = _selfieYes.asStateFlow()
+    private val _selfieNo = MutableStateFlow(selfieIndex.marksNo())
+    val selfieNo: StateFlow<Set<String>> = _selfieNo.asStateFlow()
+    /** (проверено, всего) пока идёт поиск лиц, иначе null */
+    private val _faceProgress = MutableStateFlow<Pair<Int, Int>?>(null)
+    val faceProgress: StateFlow<Pair<Int, Int>?> = _faceProgress.asStateFlow()
+    private var faceJob: Job? = null
+
+    /** Ручная отметка: фото — селфи / не селфи. */
+    fun markSelfie(item: MediaItem, selfie: Boolean) {
+        selfieIndex.mark(item.key, selfie)
+        _selfieYes.value = selfieIndex.marksYes()
+        _selfieNo.value = selfieIndex.marksNo()
+    }
+
+    /** Фоновый поиск лиц по новым фото; результаты кэшируются, повторно снимки не анализируются. */
+    private fun startFaceScan() {
+        if (faceJob?.isActive == true) return
+        faceJob = viewModelScope.launch(Dispatchers.Default) {
+            val cache = (if (_faces.value.isEmpty()) selfieIndex.loadCache() else _faces.value).toMutableMap()
+            _faces.value = cache.toMap()
+            val todo = _items.value.filter { !it.isVideo && it.key !in cache }
+            if (todo.isEmpty()) {
+                _faceProgress.value = null
+                return@launch
+            }
+            var done = 0
+            for (item in todo) {
+                ensureActive()
+                cache[item.key] = selfieIndex.detect(item)
+                done++
+                if (done % 25 == 0) {
+                    _faces.value = cache.toMap()
+                    selfieIndex.save(cache)
+                    _faceProgress.value = done to todo.size
+                }
+            }
+            _faces.value = cache.toMap()
+            selfieIndex.save(cache)
+            _faceProgress.value = null
+        }
+    }
+
     private var indexJob: Job? = null
     private var metaJob: Job? = null
     @Volatile private var canReadLocation = false
@@ -86,6 +135,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             _loaded.value = true
             startIndexing()
             startMetaScan()
+            startFaceScan()
         }
     }
 
@@ -199,6 +249,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     override fun onCleared() {
         index.close()
+        selfieIndex.close()
         super.onCleared()
     }
 }
