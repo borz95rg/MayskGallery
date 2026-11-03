@@ -123,10 +123,11 @@ fun GalleryScreen(
         }
         LazyVerticalGrid(
             columns = GridCells.Fixed(s.columns), modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+            contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 110.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             if (s.groupByDate || selecting) {
+
                 months.forEach { (month, monthItems) ->
                     item(span = { GridItemSpan(maxLineSpan) }, key = "month_$month") {
                         Row(Modifier.fillMaxWidth().padding(start = 8.dp, top = 14.dp, bottom = 3.dp),

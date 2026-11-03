@@ -83,13 +83,14 @@ fun AlbumsScreen(
         LazyVerticalGrid(
             columns = GridCells.Fixed(columns),
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(12.dp),
+            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 110.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             items(albums, key = { it.name }) { album ->
                 AlbumTile(album, s) { onOpenAlbum(album.name) }
             }
+
         }
     }
 }

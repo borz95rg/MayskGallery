@@ -260,11 +260,11 @@ private fun RootContent(vm: MainViewModel) {
             topBar = {},
             bottomBar = {},
         ) { pad ->
-            // Контент уходит под плавающую полупрозрачную панель.
-            // Только системная навигация + небольшой зазор — без глухой чёрной шторки.
-            val bottomPad = if (s.dockStyle == DockStyle.HIDDEN) navBarDp
-            else 28.dp + navBarDp
+            // Контент полностью уходит под панель. Никакого прямоугольника/шторки снизу.
+            // Только системная навигационная панель (жесты/кнопки Android).
+            val bottomPad = navBarDp
             Box(Modifier.padding(pad).padding(bottom = bottomPad).fillMaxSize()) {
+
 
 
 

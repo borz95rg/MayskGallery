@@ -155,7 +155,9 @@ fun HomeScreen(
     }
     var menu by remember { mutableStateOf(false) }
 
-    Column(Modifier.verticalScroll(rememberScrollState()).padding(bottom = 16.dp)) {
+    // Отступ внутри скролла, чтобы последние карточки можно было поднять выше панели.
+    // Глобального прямоугольника/шторки снизу больше нет — панель плавает поверх.
+    Column(Modifier.verticalScroll(rememberScrollState()).padding(bottom = 110.dp)) {
         // ---- шапка ----
         Row(
             Modifier.fillMaxWidth().padding(start = 22.dp, end = 22.dp, top = 18.dp),
@@ -163,6 +165,7 @@ fun HomeScreen(
         ) {
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.Top) {
+
                     Text("галерея", fontFamily = Serif, fontSize = 46.sp, color = Color.White)
                     Text("✦", fontSize = 16.sp, color = Color.White, modifier = Modifier.padding(top = 6.dp))
                 }
