@@ -68,6 +68,7 @@ private fun RootContent(vm: MainViewModel) {
     val s by vm.settings.collectAsStateWithLifecycle()
     val items by vm.items.collectAsStateWithLifecycle()
     val labels by vm.labels.collectAsStateWithLifecycle()
+    val meta by vm.meta.collectAsStateWithLifecycle()
     val progress by vm.progress.collectAsStateWithLifecycle()
     val update by vm.update.collectAsStateWithLifecycle()
     val message by vm.message.collectAsStateWithLifecycle()
@@ -123,6 +124,24 @@ private fun RootContent(vm: MainViewModel) {
     }
     LaunchedEffect(Unit) {
         if (granted) vm.reload() else permLauncher.launch(perms)
+    }
+
+    // ACCESS_MEDIA_LOCATION (Android 10+): без него система вырезает GPS из EXIF фото.
+    var locGranted by remember {
+        mutableStateOf(
+            Build.VERSION.SDK_INT < 29 ||
+                ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_MEDIA_LOCATION) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+    val locLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        locGranted = ok
+        vm.setLocationAccess(ok)
+    }
+    LaunchedEffect(granted, locGranted) {
+        if (granted) {
+            vm.setLocationAccess(locGranted)
+            if (!locGranted) locLauncher.launch(Manifest.permission.ACCESS_MEDIA_LOCATION)
+        }
     }
 
     // ---- удаление в корзину (Android 11+) ----
@@ -213,6 +232,7 @@ private fun RootContent(vm: MainViewModel) {
                             onTab = { tab = it },
                             onPick = pickCover,
                             onSelfie = { tab = 14 },
+                            meta = meta,
                         )
                         6 -> {
                             val videos = items.filter { it.isVideo }
@@ -237,11 +257,21 @@ private fun RootContent(vm: MainViewModel) {
                         8 -> TrashScreen(s) { list, i -> viewer = ViewerState(list, i) }
                         14 -> SelfieScreen(
                             items = items,
+                            meta = meta,
                             settings = s,
                             onBack = { tab = 5 },
                             onOpen = { list, index -> viewer = ViewerState(list, index) },
                         )
-                        in 9..13 -> ExtraFeaturesScreen(
+                        13 -> PlacesScreen(
+                            items = items,
+                            meta = meta,
+                            s = s,
+                            locationGranted = locGranted,
+                            onRequestLocation = { locLauncher.launch(Manifest.permission.ACCESS_MEDIA_LOCATION) },
+                            onBack = { tab = 5 },
+                            onOpen = { list, i -> viewer = ViewerState(list, i) },
+                        )
+                        in 9..12 -> ExtraFeaturesScreen(
                             feature = when (tab) { 9 -> "memories"; 10 -> "duplicates"; 11 -> "collage"; 12 -> "slideshow"; else -> "map" },
                             items = items,
                             s = s,

@@ -44,9 +44,21 @@ object MediaRepository {
 
         val out = ArrayList<MediaItem>()
         try {
-            val selection = if (trashedOnly && android.os.Build.VERSION.SDK_INT >= 30)
-                "${MediaStore.MediaColumns.IS_TRASHED} = 1" else null
-            context.contentResolver.query(base, projection, selection, null, null)?.use { c ->
+            val cursor = if (android.os.Build.VERSION.SDK_INT >= 30) {
+                // На Android 11+ корзина НЕ попадает в обычные запросы, а условие
+                // IS_TRASHED в selection игнорируется — нужен именно Bundle с MATCH_TRASHED.
+                val args = android.os.Bundle().apply {
+                    putInt(
+                        MediaStore.QUERY_ARG_MATCH_TRASHED,
+                        if (trashedOnly) MediaStore.MATCH_ONLY else MediaStore.MATCH_EXCLUDE,
+                    )
+                    putInt(MediaStore.QUERY_ARG_MATCH_PENDING, MediaStore.MATCH_EXCLUDE)
+                }
+                context.contentResolver.query(base, projection, args, null)
+            } else {
+                context.contentResolver.query(base, projection, null, null, null)
+            }
+            cursor?.use { c ->
                 val iId = c.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
                 val iName = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
                 val iMime = c.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)

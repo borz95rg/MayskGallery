@@ -125,11 +125,19 @@ fun HomeScreen(
     onTab: (Int) -> Unit,
     onPick: (Int) -> Unit,
     onSelfie: () -> Unit,
+    meta: Map<String, com.maysk.gallery.data.MediaMeta> = emptyMap(),
 ) {
     val cs = MaterialTheme.colorScheme
     val photos = remember(items) { items.filter { !it.isVideo } }
     val albums = remember(items) {
         items.groupBy { it.bucket }.map { AlbumInfo(it.key, it.value) }.sortedByDescending { it.count }
+    }
+    val placesCount = remember(items, meta) {
+        items.filter { !it.isVideo }.mapNotNull { i -> meta[i.key]?.takeIf { it.hasGeo } }
+            .map { Math.round(it.lat * 10) to Math.round(it.lon * 10) }.distinct().size
+    }
+    val selfieCount = remember(items, meta) {
+        items.count { !it.isVideo && (com.maysk.gallery.data.MediaMetaIndex.looksLikeSelfieByName(it) || meta[it.key]?.selfie == true) }
     }
     val favs = remember(items, s.favorites) { items.filter { it.key in s.favorites } }
     val recent = remember(items) {
@@ -159,7 +167,7 @@ fun HomeScreen(
                     listOf(
                         "Все альбомы" to 1, "AI Поиск" to 2, "Сейф" to 3,
                         "Корзина" to 8, "Воспоминания" to 9, "Дубликаты" to 10,
-                        "Коллаж" to 11, "Слайд-шоу" to 12, "Карта фотографий" to 13,
+                        "Коллаж" to 11, "Слайд-шоу" to 12, "Места" to 13,
                         "Настройки" to 4,
                     ).forEach { (t, i) ->
                         DropdownMenuItem(text = { Text(t) }, onClick = { menu = false; onTab(i) })
@@ -213,8 +221,8 @@ fun HomeScreen(
         ) {
             QuickCard(Icons.Filled.Star, "избранное", favs.size) { onFilter("избранное", favs) }
             QuickCard(Icons.Filled.History, "недавние", recent.size) { onFilter("недавние", recent) }
-            QuickCard(Icons.Filled.Place, "места", albums.size) { onTab(1) }
-            QuickCard(Icons.Filled.CameraAlt, "селфи", items.count { it.bucket.equals("Selfies", ignoreCase = true) }) { onSelfie() }
+            QuickCard(Icons.Filled.Place, "места", placesCount) { onTab(13) }
+            QuickCard(Icons.Filled.CameraAlt, "селфи", selfieCount) { onSelfie() }
         }
 
         // ---- альбомы ----

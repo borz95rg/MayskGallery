@@ -6,6 +6,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.maysk.gallery.ai.AiIndex
 import com.maysk.gallery.data.MediaItem
+import com.maysk.gallery.data.MediaMeta
+import com.maysk.gallery.data.MediaMetaIndex
 import com.maysk.gallery.data.MediaRepository
 import com.maysk.gallery.data.SecretVault
 import com.maysk.gallery.data.SettingsRepository
@@ -14,6 +16,7 @@ import com.maysk.gallery.update.UpdateChecker
 import com.maysk.gallery.update.UpdateInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -29,6 +32,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val ctx = app.applicationContext
     private val repo = SettingsRepository(ctx)
     private val index = AiIndex(ctx)
+    private val metaIndex = MediaMetaIndex(ctx)
     val vault = SecretVault(ctx)
 
     private val _secret = MutableStateFlow<List<MediaItem>>(emptyList())
@@ -57,15 +61,22 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
 
-    private var indexJob: Job? = null
+    /** key фото -> GPS и признак селфи (заполняется в фоне и кэшируется) */
+    private val _meta = MutableStateFlow<Map<String, MediaMeta>>(emptyMap())
+    val meta: StateFlow<Map<String, MediaMeta>> = _meta.asStateFlow()
 
-    init {
-        refreshSecret()
-        // автопроверка обновлений при запуске
-        viewModelScope.launch {
-            delay(1500)
-            if (repo.flow.first().autoUpdate) checkUpdate(manual = false)
-        }
+    private var indexJob: Job? = null
+    private var metaJob: Job? = null
+    @Volatile private var canReadLocation = false
+
+    private val prefs = ctx.getSharedPreferences("meta", android.content.Context.MODE_PRIVATE)
+
+    /** Вызывать после выдачи ACCESS_MEDIA_LOCATION: раньше система скрывала GPS, старый кэш без координат недействителен. */
+    fun setLocationAccess(granted: Boolean) {
+        val changed = canReadLocation != granted
+        canReadLocation = granted
+        if (granted && changed) metaJob?.cancel()
+        if (granted && _loaded.value) startMetaScan()
     }
 
     fun reload() {
@@ -74,6 +85,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             _labels.value = index.loadCache()
             _loaded.value = true
             startIndexing()
+            startMetaScan()
         }
     }
 
@@ -107,6 +119,26 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             _labels.value = cache.toMap()
             index.save(cache)
             _progress.value = null
+        }
+    }
+
+    private fun startMetaScan() {
+        if (metaJob?.isActive == true) return
+        metaJob = viewModelScope.launch(Dispatchers.IO) {
+            val withLoc = canReadLocation
+            val cache = (if (_meta.value.isEmpty()) metaIndex.loadCache() else _meta.value).toMutableMap()
+            val needRescan = withLoc && !prefs.getBoolean("scanned_with_location", false)
+            if (needRescan) cache.entries.removeAll { !it.value.hasGeo }
+            val todo = _items.value.filter { !it.isVideo && it.key !in cache }
+            var n = 0
+            for (item in todo) {
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                metaIndex.read(item, withLoc)?.let { cache[item.key] = it }
+                if (++n % 150 == 0) { _meta.value = cache.toMap(); metaIndex.save(cache) }
+            }
+            _meta.value = cache.toMap()
+            metaIndex.save(cache)
+            if (withLoc) prefs.edit().putBoolean("scanned_with_location", true).apply()
         }
     }
 

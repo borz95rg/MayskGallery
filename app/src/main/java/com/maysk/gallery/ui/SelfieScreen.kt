@@ -21,6 +21,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.maysk.gallery.data.MediaItem
+import com.maysk.gallery.data.MediaMeta
+import com.maysk.gallery.data.MediaMetaIndex
 import com.maysk.gallery.data.UiSettings
 
 /**
@@ -30,17 +32,14 @@ import com.maysk.gallery.data.UiSettings
 @Composable
 fun SelfieScreen(
     items: List<MediaItem>,
+    meta: Map<String, MediaMeta>,
     settings: UiSettings,
     onBack: () -> Unit,
     onOpen: (List<MediaItem>, Int) -> Unit,
 ) {
-    // Снимки, сделанные встроенной фронтальной камерой приложения, сохраняются
-    // в отдельный альбом Selfies и получают префикс SELFIE_.
+    // Селфи определяем по альбому/имени файла и по EXIF (LensModel «front camera»).
     val selfies = items.filter { item ->
-        !item.isVideo && (
-            item.bucket.equals("Selfies", ignoreCase = true) ||
-                item.name.startsWith("SELFIE_", ignoreCase = true)
-            )
+        !item.isVideo && (MediaMetaIndex.looksLikeSelfieByName(item) || meta[item.key]?.selfie == true)
     }.sortedByDescending { it.dateMillis }
 
     Column(Modifier.fillMaxSize()) {
