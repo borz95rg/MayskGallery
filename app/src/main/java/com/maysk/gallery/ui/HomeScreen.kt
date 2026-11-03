@@ -13,12 +13,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
@@ -54,6 +57,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -71,6 +75,7 @@ import com.maysk.gallery.data.DockStyle
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+
 
 private val Serif = FontFamily.Serif
 private val Soft = Color(0xFFEDEDED)
@@ -415,30 +420,71 @@ fun OriginalDock(selected: Int, s: UiSettings, modifier: Modifier = Modifier, on
         DockStyle.HIDDEN -> RoundedCornerShape(0.dp)
     }
     val bg = Color(s.dockColor)
-    Box(modifier.fillMaxWidth().padding(horizontal = if (s.dockStyle == DockStyle.FLAT) 0.dp else 18.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
+    // Цвет текста/иконок зависит от яркости фона панели — иначе на светлой теме/цвете панели белый текст пропадает
+    val onDock = if (bg.luminance() > 0.5f) Color(0xFF121212) else Color.White
+    val onDockMuted = onDock.copy(alpha = 0.68f)
+    val borderColor = if (bg.luminance() > 0.5f) Color.Black.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.16f)
+
+    Box(
+        modifier
+            .fillMaxWidth()
+            .windowInsetsPadding(WindowInsets.navigationBars)
+            .padding(horizontal = if (s.dockStyle == DockStyle.FLAT) 0.dp else 18.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
         Row(
-            Modifier.fillMaxWidth().height(s.dockHeight.coerceIn(60,140).dp)
+            Modifier.fillMaxWidth().height(s.dockHeight.coerceIn(60, 140).dp)
                 .then(if (s.dockStyle == DockStyle.VOLUMETRIC) Modifier.shadow(16.dp, shape) else Modifier)
                 .clip(shape)
-                .then(if (s.dockStyle == DockStyle.VOLUMETRIC) Modifier.background(Brush.verticalGradient(listOf(bg.copy(alpha=.82f), bg, bg.copy(alpha=.92f)))) else Modifier.background(bg))
-                .border(if (s.dockStyle == DockStyle.VOLUMETRIC || s.dockStyle == DockStyle.FLOATING) 1.dp else 0.dp, Color.White.copy(alpha=.16f), shape),
+                .then(
+                    if (s.dockStyle == DockStyle.VOLUMETRIC)
+                        Modifier.background(Brush.verticalGradient(listOf(bg.copy(alpha = .82f), bg, bg.copy(alpha = .92f))))
+                    else Modifier.background(bg)
+                )
+                .border(
+                    if (s.dockStyle == DockStyle.VOLUMETRIC || s.dockStyle == DockStyle.FLOATING) 1.dp else 0.dp,
+                    borderColor,
+                    shape
+                ),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
-            DockItem(Icons.Filled.Landscape, "Фото", selected == 0, Modifier.weight(1f), s.dockShowLabels, ring) { onSelect(0) }
-            DockItem(Icons.Filled.AutoAwesome, "Альбомы", selected == 1, Modifier.weight(1f), s.dockShowLabels, ring) { onSelect(1) }
-            DockItem(Icons.Outlined.VideoLibrary, "Видео", selected == 2, Modifier.weight(1f), s.dockShowLabels, ring) { onSelect(2) }
+            DockItem(Icons.Filled.Landscape, "фото", selected == 0, Modifier.weight(1f), s.dockShowLabels, ring, onDock, onDockMuted) { onSelect(0) }
+            DockItem(Icons.Filled.AutoAwesome, "альбомы", selected == 1, Modifier.weight(1f), s.dockShowLabels, ring, onDock, onDockMuted) { onSelect(1) }
+            DockItem(Icons.Outlined.VideoLibrary, "видео", selected == 2, Modifier.weight(1f), s.dockShowLabels, ring, onDock, onDockMuted) { onSelect(2) }
         }
     }
 }
 
 @Composable
 private fun DockItem(
-    icon: ImageVector, title: String, on: Boolean, modifier: Modifier,
-    showLabel: Boolean, accent: Color, onClick: () -> Unit
+    icon: ImageVector,
+    title: String,
+    on: Boolean,
+    modifier: Modifier,
+    showLabel: Boolean,
+    accent: Color,
+    onDock: Color,
+    onDockMuted: Color,
+    onClick: () -> Unit
 ) {
-    Column(modifier.clickable(onClick = onClick).padding(vertical=4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Icon(icon, null, tint = if (on) accent else Color.White.copy(alpha = 0.68f), modifier = Modifier.size(26.dp))
-        if (showLabel) Text(title, fontSize = 12.sp, color = if (on) accent else Color.White.copy(alpha = 0.68f), maxLines = 1)
+    Column(
+        modifier.clickable(onClick = onClick).padding(vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            icon, null,
+            tint = if (on) accent else onDockMuted,
+            modifier = Modifier.size(26.dp)
+        )
+        if (showLabel) {
+            Text(
+                title,
+                fontSize = 12.sp,
+                color = if (on) accent else onDockMuted,
+                maxLines = 1
+            )
+        }
     }
 }
+

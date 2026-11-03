@@ -13,10 +13,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
@@ -40,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -52,6 +56,7 @@ import com.maysk.gallery.MainViewModel
 import com.maysk.gallery.data.DockStyle
 import com.maysk.gallery.data.MediaItem
 import com.maysk.gallery.update.ApkInstaller
+
 
 private class ViewerState(val items: List<MediaItem>, val index: Int, val secret: Boolean = false)
 
@@ -244,6 +249,10 @@ private fun RootContent(vm: MainViewModel) {
         }
     }
 
+    val density = LocalDensity.current
+    val navBarBottom = WindowInsets.navigationBars.getBottom(density)
+    val navBarDp = with(density) { navBarBottom.toDp() }
+
     Box(Modifier.fillMaxSize().background(appBackground(s))) {
         Scaffold(
             containerColor = Color.Transparent,
@@ -251,7 +260,12 @@ private fun RootContent(vm: MainViewModel) {
             topBar = {},
             bottomBar = {},
         ) { pad ->
-            Box(Modifier.padding(pad).padding(bottom = if (s.dockStyle == DockStyle.HIDDEN) 0.dp else (s.dockHeight + 24).dp).fillMaxSize()) {
+            // Отступ снизу = высота дока + небольшой зазор + системная навигационная панель,
+            // чтобы контент не уходил под док и под системную «полосу».
+            val bottomPad = if (s.dockStyle == DockStyle.HIDDEN) navBarDp
+            else (s.dockHeight + 24).dp + navBarDp
+            Box(Modifier.padding(pad).padding(bottom = bottomPad).fillMaxSize()) {
+
                 when {
                     !granted -> PermissionScreen { permLauncher.launch(perms) }
                     !loaded -> Box(Modifier.fillMaxSize(), Alignment.Center) {

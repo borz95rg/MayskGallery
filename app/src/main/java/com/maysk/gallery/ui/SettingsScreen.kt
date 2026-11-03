@@ -38,6 +38,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -162,16 +163,19 @@ fun SettingsScreen(vm: MainViewModel, s: UiSettings) {
             }
             SettingsSwitch("Текст на кнопках", "Показывать подписи Фото, Альбомы и Видео", s.dockShowLabels) { vm.set(Keys.DOCK_LABELS,it) }
             SettingsSlider("Высота панели", "${s.dockHeight} dp", s.dockHeight.toFloat(), 60f..140f) { vm.set(Keys.DOCK_HEIGHT,it.roundToInt()) }
-            Card(colors=CardDefaults.cardColors(containerColor=Color(s.dockColor)), shape=RoundedCornerShape(24.dp)) {
+            val dockBg = Color(s.dockColor)
+            val onDockPreview = if (dockBg.luminance() > 0.5f) Color(0xFF121212) else Color.White
+            Card(colors=CardDefaults.cardColors(containerColor=dockBg), shape=RoundedCornerShape(24.dp)) {
                 Row(Modifier.fillMaxWidth().height(s.dockHeight.coerceIn(60,140).dp).padding(12.dp), horizontalArrangement=Arrangement.SpaceEvenly, verticalAlignment=Alignment.CenterVertically) {
-                    listOf("Фото","Альбомы","Видео").forEach { label ->
+                    listOf("фото","альбомы","видео").forEach { label ->
                         Column(horizontalAlignment=Alignment.CenterHorizontally) {
-                            Text(when(label){"Фото"->"▧";"Альбомы"->"✦";else->"▷"}, color=Color.White, fontSize=20.sp)
-                            if (s.dockShowLabels) Text(label, color=Color.White, fontSize=12.sp)
+                            Text(when(label){"фото"->"▧";"альбомы"->"✦";else->"▷"}, color=onDockPreview, fontSize=20.sp)
+                            if (s.dockShowLabels) Text(label, color=onDockPreview, fontSize=12.sp)
                         }
                     }
                 }
             }
+
         }
 
         SettingsGroup("РАЗМЕР ТЕКСТА", "Изменяй шрифт и проверяй результат в реальном времени") {
