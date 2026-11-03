@@ -78,8 +78,9 @@ enum class AlbumView(val title: String) {
 
 /** Все настройки «Конструктора интерфейса». */
 data class UiSettings(
-    val preset: ThemePreset = ThemePreset.ORIGINAL,
+    val preset: ThemePreset = ThemePreset.SYSTEM,
     val columns: Int = 3,
+
     val cornerPercent: Int = 40,   // 0..80
     val glassAlpha: Float = 0.75f, // 0.2..1
     val shadow: Int = 1,           // 0 OFF, 1 LOW, 2 MEDIUM, 3 HIGH
