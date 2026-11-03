@@ -151,9 +151,9 @@ fun SettingsScreen(vm: MainViewModel, s: UiSettings) {
             ChipRow(listOf(0,1,2,3),s.shadow,{listOf("Нет","Мягкая","Средняя","Сильная")[it]}) { vm.set(Keys.SHADOW,it) }
         }
 
-        SettingsGroup("НИЖНЯЯ ПАНЕЛЬ", "Настрой навигацию и сразу смотри результат") {
+        SettingsGroup("НИЖНЯЯ ПАНЕЛЬ", "Плавающее полупрозрачное меню. Контент виден сквозь него") {
             ChipRow(DockStyle.values().toList(), s.dockStyle, { it.title }) { vm.set(Keys.DOCK_STYLE,it.name) }
-            SettingsLabel("Цвет панели", "Выбери оттенок нижней панели")
+            SettingsLabel("Цвет панели", "Оттенок стекла (прозрачность зависит от стиля)")
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement=Arrangement.spacedBy(10.dp)) {
                 listOf(0xFF17171C,0xFF25252B,0xFF263B55,0xFF472A5D,0xFF17483F,0xFF6A3544,0xFF8A5A32,0xFFE8EDF3).forEach { c ->
                     Box(Modifier.size(34.dp).clip(CircleShape).background(Color(c))
@@ -161,22 +161,21 @@ fun SettingsScreen(vm: MainViewModel, s: UiSettings) {
                         .clickable { vm.set(Keys.DOCK_COLOR,c.toInt()) })
                 }
             }
-            SettingsSwitch("Текст на кнопках", "Показывать подписи Фото, Альбомы и Видео", s.dockShowLabels) { vm.set(Keys.DOCK_LABELS,it) }
-            SettingsSlider("Высота панели", "${s.dockHeight} dp", s.dockHeight.toFloat(), 60f..140f) { vm.set(Keys.DOCK_HEIGHT,it.roundToInt()) }
-            val dockBg = Color(s.dockColor)
-            val onDockPreview = if (dockBg.luminance() > 0.5f) Color(0xFF121212) else Color.White
-            Card(colors=CardDefaults.cardColors(containerColor=dockBg), shape=RoundedCornerShape(24.dp)) {
-                Row(Modifier.fillMaxWidth().height(s.dockHeight.coerceIn(60,140).dp).padding(12.dp), horizontalArrangement=Arrangement.SpaceEvenly, verticalAlignment=Alignment.CenterVertically) {
+            SettingsSwitch("Текст на кнопках", "Показывать подписи фото, альбомы и видео", s.dockShowLabels) { vm.set(Keys.DOCK_LABELS,it) }
+            val dockBg = Color(s.dockColor).copy(alpha = 0.50f)
+            val onDockPreview = if (Color(s.dockColor).luminance() > 0.5f) Color(0xFF121212) else Color.White
+            Card(colors=CardDefaults.cardColors(containerColor=dockBg), shape=RoundedCornerShape(28.dp)) {
+                Row(Modifier.fillMaxWidth().height(64.dp).padding(12.dp), horizontalArrangement=Arrangement.SpaceEvenly, verticalAlignment=Alignment.CenterVertically) {
                     listOf("фото","альбомы","видео").forEach { label ->
                         Column(horizontalAlignment=Alignment.CenterHorizontally) {
-                            Text(when(label){"фото"->"▧";"альбомы"->"✦";else->"▷"}, color=onDockPreview, fontSize=20.sp)
-                            if (s.dockShowLabels) Text(label, color=onDockPreview, fontSize=12.sp)
+                            Text(when(label){"фото"->"▧";"альбомы"->"✦";else->"▷"}, color=onDockPreview, fontSize=18.sp)
+                            if (s.dockShowLabels) Text(label, color=onDockPreview, fontSize=11.sp)
                         }
                     }
                 }
             }
-
         }
+
 
         SettingsGroup("РАЗМЕР ТЕКСТА", "Изменяй шрифт и проверяй результат в реальном времени") {
             SettingsSlider("Размер шрифта", "${(s.fontScale*100).toInt()}%", s.fontScale, .8f..1.6f) { vm.set(Keys.FONT,it) }

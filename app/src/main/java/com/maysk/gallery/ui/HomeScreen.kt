@@ -409,44 +409,50 @@ private fun androidx.compose.foundation.layout.RowScope.QuickCard(icon: ImageVec
 }
 
 /**
- * Оригинальная нижняя панель как на первом скрине:
- * вытянутая капсула + большая круглая кнопка «альбомы» по центру.
+ * Плавающая полупрозрачная (frosted glass) нижняя панель.
+ * Контент галереи уходит под неё. Фон панели полупрозрачный — сквозь неё видно альбомы.
  * selected: 0 = фото, 1 = альбомы, 2 = видео.
  */
 @Composable
 fun OriginalDock(selected: Int, s: UiSettings, modifier: Modifier = Modifier, onSelect: (Int) -> Unit) {
     if (s.dockStyle == DockStyle.HIDDEN) return
 
-    val bg = Color(s.dockColor)
-    val onDock = if (bg.luminance() > 0.5f) Color(0xFF121212) else Color.White
-    val onDockMuted = onDock.copy(alpha = 0.62f)
-    val borderColor = if (bg.luminance() > 0.5f) Color.Black.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.14f)
+    val base = Color(s.dockColor)
+    // Сильная прозрачность, чтобы контент был виден сквозь панель
+    val glassAlpha = when (s.dockStyle) {
+        DockStyle.FLAT -> 0.55f
+        DockStyle.VOLUMETRIC -> 0.72f
+        else -> 0.48f // FLOATING — максимально «стеклянный»
+    }
+    val bg = base.copy(alpha = glassAlpha)
+    val onDock = if (base.luminance() > 0.5f) Color(0xFF121212) else Color.White
+    val onDockMuted = onDock.copy(alpha = 0.70f)
+    val borderColor = Color.White.copy(alpha = 0.22f)
     val accent = MaterialTheme.colorScheme.primary
 
-    val barHeight = 64.dp
-    val centerSize = 72.dp
+    val barHeight = 62.dp
+    val centerSize = 70.dp
     val isFlat = s.dockStyle == DockStyle.FLAT
+    val shape = if (isFlat) RoundedCornerShape(0.dp) else RoundedCornerShape(38.dp)
 
     Box(
         modifier
             .fillMaxWidth()
             .windowInsetsPadding(WindowInsets.navigationBars)
-            .padding(horizontal = if (isFlat) 0.dp else 20.dp, vertical = 10.dp),
+            .padding(horizontal = if (isFlat) 0.dp else 18.dp, vertical = 8.dp),
         contentAlignment = Alignment.BottomCenter
     ) {
-        // Основная капсула
+        // Основная капсула — полупрозрачное стекло
         Box(
             Modifier
                 .fillMaxWidth()
                 .height(barHeight)
-                .then(if (s.dockStyle == DockStyle.VOLUMETRIC) Modifier.shadow(18.dp, RoundedCornerShape(40.dp)) else Modifier)
-                .clip(if (isFlat) RoundedCornerShape(0.dp) else RoundedCornerShape(40.dp))
+                .then(if (s.dockStyle != DockStyle.FLAT) Modifier.shadow(20.dp, shape) else Modifier)
+                .clip(shape)
                 .background(bg)
-                .border(
-                    width = if (isFlat) 0.dp else 1.dp,
-                    color = borderColor,
-                    shape = if (isFlat) RoundedCornerShape(0.dp) else RoundedCornerShape(40.dp)
-                )
+                // лёгкий «frost» сверху
+                .background(Color.White.copy(alpha = 0.06f + s.frost * 0.12f))
+                .border(1.dp, borderColor, shape)
         ) {
             Row(
                 Modifier.fillMaxWidth().height(barHeight),
@@ -479,18 +485,15 @@ fun OriginalDock(selected: Int, s: UiSettings, modifier: Modifier = Modifier, on
             }
         }
 
-        // Большая круглая кнопка «альбомы» по центру (как в оригинале)
+        // Большая круглая кнопка «альбомы» (glowing center)
         Box(
             Modifier
                 .size(centerSize)
-                .offset(y = (-14).dp)
-                .shadow(12.dp, CircleShape)
+                .offset(y = (-12).dp)
+                .shadow(16.dp, CircleShape)
                 .clip(CircleShape)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(bg.copy(alpha = 0.95f), bg)
-                    )
-                )
+                .background(base.copy(alpha = (glassAlpha + 0.25f).coerceAtMost(0.85f)))
+                .background(Color.White.copy(alpha = 0.08f))
                 .border(1.5.dp, borderColor, CircleShape)
                 .clickable { onSelect(1) },
             contentAlignment = Alignment.Center
@@ -549,5 +552,6 @@ private fun DockSideItem(
         }
     }
 }
+
 
 
