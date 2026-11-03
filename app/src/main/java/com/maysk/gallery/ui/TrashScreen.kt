@@ -21,6 +21,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
@@ -37,8 +41,18 @@ fun TrashScreen(s: UiSettings, onOpen: (List<MediaItem>, Int) -> Unit) {
     val ctx = LocalContext.current
     var items by remember { mutableStateOf(emptyList<MediaItem>()) }
     var pending by remember { mutableStateOf<MediaItem?>(null) }
+    var confirmClearAll by remember { mutableStateOf(false) }
     var refresh by remember { mutableStateOf(0) }
     var message by remember { mutableStateOf<String?>(null) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) refresh++
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     LaunchedEffect(refresh) {
         items = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
@@ -60,11 +74,15 @@ fun TrashScreen(s: UiSettings, onOpen: (List<MediaItem>, Int) -> Unit) {
 
     Column(Modifier.fillMaxSize()) {
         ScreenTitle("Корзина")
-        Text(
-            "В корзине: ${items.size}",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-        )
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text("В корзине: ${items.size}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (items.isNotEmpty() && Build.VERSION.SDK_INT >= 30) {
+                TextButton(onClick = { confirmClearAll = true }) { Text("Очистить всё") }
+            }
+        }
 
         if (Build.VERSION.SDK_INT < 30) {
             Text(
@@ -116,6 +134,30 @@ fun TrashScreen(s: UiSettings, onOpen: (List<MediaItem>, Int) -> Unit) {
         message?.let {
             Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(12.dp))
         }
+    }
+
+    if (confirmClearAll) {
+        AlertDialog(
+            onDismissRequest = { confirmClearAll = false },
+            title = { Text("Очистить корзину полностью?") },
+            text = { Text("Будут безвозвратно удалены все ${items.size} фото и видео из корзины. Android может запросить подтверждение.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    val uris = items.map { it.uri }
+                    confirmClearAll = false
+                    try {
+                        if (Build.VERSION.SDK_INT >= 30 && uris.isNotEmpty()) {
+                            val request = MediaStore.createDeleteRequest(ctx.contentResolver, uris)
+                            launchSystemRequest(request.intentSender)
+                        }
+                    } catch (e: Exception) {
+                        message = "Не удалось очистить корзину: ${e.message ?: "ошибка доступа"}"
+                        refresh++
+                    }
+                }) { Text("Удалить всё") }
+            },
+            dismissButton = { TextButton(onClick = { confirmClearAll = false }) { Text("Отмена") } },
+        )
     }
 
     pending?.let { item ->

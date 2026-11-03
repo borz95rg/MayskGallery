@@ -112,8 +112,15 @@ private fun RootContent(vm: MainViewModel) {
 
     // ---- разрешения ----
     val perms = remember {
-        if (Build.VERSION.SDK_INT >= 33) arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO)
-        else arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+        when {
+            Build.VERSION.SDK_INT >= 34 -> arrayOf(
+                Manifest.permission.READ_MEDIA_IMAGES,
+                Manifest.permission.READ_MEDIA_VIDEO,
+                Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
+            )
+            Build.VERSION.SDK_INT >= 33 -> arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO)
+            else -> arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+        }
     }
     var granted by remember {
         mutableStateOf(perms.all { ContextCompat.checkSelfPermission(ctx, it) == PackageManager.PERMISSION_GRANTED })
@@ -121,6 +128,15 @@ private fun RootContent(vm: MainViewModel) {
     val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { res ->
         granted = res.values.all { it }
         if (granted) vm.reload()
+    }
+    // Перечитываем MediaStore после возврата из камеры или другого приложения:
+    // новые фотографии появляются без ручного перезапуска галереи.
+    DisposableEffect(lifecycleOwner, granted) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME && granted) vm.reload()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     LaunchedEffect(Unit) {
         if (granted) vm.reload() else permLauncher.launch(perms)

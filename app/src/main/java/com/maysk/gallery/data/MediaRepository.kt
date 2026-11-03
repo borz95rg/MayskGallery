@@ -64,6 +64,7 @@ object MediaRepository {
                 val iMime = c.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)
                 val iSize = c.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
                 val iAdded = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_ADDED)
+                val iModified = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_MODIFIED)
                 val iBucket = c.getColumnIndexOrThrow(MediaStore.MediaColumns.BUCKET_DISPLAY_NAME)
                 val iTaken = c.getColumnIndexOrThrow(
                     if (isVideo) MediaStore.Video.Media.DATE_TAKEN else MediaStore.Images.Media.DATE_TAKEN
@@ -75,7 +76,15 @@ object MediaRepository {
                 while (c.moveToNext()) {
                     val id = c.getLong(iId)
                     val taken = c.getLong(iTaken)
-                    val date = if (taken > 0) taken else c.getLong(iAdded) * 1000L
+                    val modified = c.getLong(iModified)
+                    val added = c.getLong(iAdded)
+                    // DATE_TAKEN отсутствует у части новых снимков и у некоторых OEM-камер.
+                    // DATE_MODIFIED точнее DATE_ADDED для недавно обработанных/перенесённых файлов.
+                    val date = when {
+                        taken > 0L -> taken
+                        modified > 0L -> modified * 1000L
+                        else -> added * 1000L
+                    }
                     out += MediaItem(
                         id = id,
                         uri = ContentUris.withAppendedId(base, id),

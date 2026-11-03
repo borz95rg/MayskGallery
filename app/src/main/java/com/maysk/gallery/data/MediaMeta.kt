@@ -73,8 +73,15 @@ class MediaMetaIndex(private val context: Context) {
                 val exif = ExifInterface(it)
                 val ll = FloatArray(2)
                 val geo = exif.getLatLong(ll) && !(ll[0] == 0f && ll[1] == 0f)
-                val lens = (exif.getAttribute(ExifInterface.TAG_LENS_MODEL) ?: "").lowercase(Locale.ROOT)
-                val lensSelfie = "front" in lens || "selfie" in lens || "фронт" in lens
+                val exifHints = listOf(
+                    exif.getAttribute(ExifInterface.TAG_LENS_MODEL),
+                    exif.getAttribute(ExifInterface.TAG_IMAGE_DESCRIPTION),
+                    exif.getAttribute(ExifInterface.TAG_USER_COMMENT),
+                    exif.getAttribute(ExifInterface.TAG_MAKE),
+                    exif.getAttribute(ExifInterface.TAG_MODEL),
+                ).filterNotNull().joinToString(" ").lowercase(Locale.ROOT)
+                val lensSelfie = listOf("front", "selfie", "фронт", "前置", "前摄", "user camera")
+                    .any { it in exifHints }
                 MediaMeta(
                     if (geo) ll[0].toDouble() else Double.NaN,
                     if (geo) ll[1].toDouble() else Double.NaN,
@@ -94,8 +101,9 @@ class MediaMetaIndex(private val context: Context) {
         fun looksLikeSelfieByName(item: MediaItem): Boolean {
             val b = item.bucket.lowercase(Locale.ROOT)
             val n = item.name.lowercase(Locale.ROOT)
-            return b == "selfies" || b == "selfie" || b == "селфи" ||
-                "selfie" in n || "_front" in n || "front_" in n || "-front" in n || "frontcamera" in n
+            val pathHints = listOf("selfies", "selfie", "селфи", "front camera", "front_camera", "frontcamera")
+            return pathHints.any { it in b || it in n } ||
+                "_front" in n || "front_" in n || "-front" in n || "фронт" in n
         }
     }
 }
