@@ -42,11 +42,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import coil.compose.AsyncImage
+
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -254,7 +257,19 @@ private fun RootContent(vm: MainViewModel) {
     val navBarDp = with(density) { navBarBottom.toDp() }
 
     Box(Modifier.fillMaxSize().background(appBackground(s))) {
+        // Свой фон-фото поверх цвета темы
+        if (s.bgImage.isNotBlank()) {
+            AsyncImage(
+                model = s.bgImage,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+            // Лёгкое затемнение, чтобы текст оставался читаемым
+            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.35f)))
+        }
         Scaffold(
+
             containerColor = Color.Transparent,
             // Темы меняют только палитру и эффекты; навигационная структура не меняется.
             topBar = {},

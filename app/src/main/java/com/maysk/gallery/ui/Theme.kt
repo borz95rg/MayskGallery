@@ -32,6 +32,7 @@ import com.maysk.gallery.data.ThemePreset
 import com.maysk.gallery.data.UiSettings
 
 private fun isDark(s: UiSettings, system: Boolean): Boolean = when (s.preset) {
+    ThemePreset.SYSTEM -> system
     ThemePreset.ARCTIC, ThemePreset.ICE_WIND -> false
     ThemePreset.ORIGINAL, ThemePreset.GLASS, ThemePreset.LUXURY, ThemePreset.NEON,
     ThemePreset.DEEP_BLUE, ThemePreset.VIOLET, ThemePreset.MINT_COAL,
@@ -39,6 +40,7 @@ private fun isDark(s: UiSettings, system: Boolean): Boolean = when (s.preset) {
     ThemePreset.EMERALD, ThemePreset.DARK_MAGIC -> true
     else -> system
 }
+
 
 @Composable
 private fun schemeFor(s: UiSettings, dark: Boolean): ColorScheme {
@@ -65,6 +67,10 @@ private fun schemeFor(s: UiSettings, dark: Boolean): ColorScheme {
         )
     }
     val result = when (s.preset) {
+        ThemePreset.SYSTEM, ThemePreset.MODERN -> if (Build.VERSION.SDK_INT >= 31) {
+            val ctx = LocalContext.current
+            if (dark) dynamicDarkColorScheme(ctx) else dynamicLightColorScheme(ctx)
+        } else if (dark) darkColorScheme() else lightColorScheme()
         ThemePreset.DEEP_BLUE -> scheme(0xFF0D1B2A, 0xFF17283A, 0xFF1B263B, 0xFF24384D, false)
         ThemePreset.ARCTIC -> scheme(0xFFF8F9FA, 0xFFFFFFFF, 0xFF007AFF, 0xFFE9EEF4, true)
         ThemePreset.VIOLET -> scheme(0xFF1A0B2E, 0xFF281640, 0xFF7B2CBF, 0xFF382052, false)
@@ -77,21 +83,25 @@ private fun schemeFor(s: UiSettings, dark: Boolean): ColorScheme {
         ThemePreset.DARK_MAGIC -> scheme(0xFF050505, 0xFF151515, 0xFFE63946, 0xFF242424, false)
         ThemePreset.ORIGINAL -> scheme(0xFF000000, 0xFF121214, 0xFFEDEDED, 0xFF232326, false)
         ThemePreset.CLASSIC -> if (dark) scheme(0xFF101114, 0xFF1B1C20, 0xFF6AA4FF, 0xFF2A2B31, false) else scheme(0xFFF6F6F8, 0xFFFFFFFF, 0xFF1E6FE0, 0xFFE9E9EE, true)
-        ThemePreset.MODERN -> if (Build.VERSION.SDK_INT >= 31) {
-            val ctx = LocalContext.current
-            if (dark) dynamicDarkColorScheme(ctx) else dynamicLightColorScheme(ctx)
-        } else if (dark) darkColorScheme() else lightColorScheme()
         ThemePreset.GLASS -> scheme(0xFF120A2A, 0xFF2A1A5E, 0xFFB88CFF, 0xFF3A2878, false)
         ThemePreset.LUXURY -> scheme(0xFF0B0B0B, 0xFF181818, 0xFFD4AF37, 0xFF242424, false)
         ThemePreset.NEON -> scheme(0xFF07040F, 0xFF1A0C33, 0xFFFF2BD6, 0xFF28104D, false)
         ThemePreset.MINIMAL -> if (dark) scheme(0xFF000000, 0xFF111111, 0xFFFFFFFF, 0xFF1C1C1C, false) else scheme(0xFFFFFFFF, 0xFFF4F4F4, 0xFF000000, 0xFFEAEAEA, true)
         ThemePreset.ISTYLE -> if (dark) scheme(0xFF000000, 0xFF1C1C1E, 0xFF0A84FF, 0xFF2C2C2E, false) else scheme(0xFFF2F2F7, 0xFFFFFFFF, 0xFF0A84FF, 0xFFE5E5EA, true)
     }
-    return if (s.accent != 0) {
+    var out = result
+    if (s.accent != 0) {
         val a = Color(s.accent)
-        result.copy(primary = a, onPrimary = if (a.luminance() > .5f) Color(0xFF121212) else Color.White)
-    } else result
+        out = out.copy(primary = a, onPrimary = if (a.luminance() > .5f) Color(0xFF121212) else Color.White)
+    }
+    // Свой цвет текста перекрывает автоматический
+    if (s.textColor != 0) {
+        val t = Color(s.textColor)
+        out = out.copy(onBackground = t, onSurface = t)
+    }
+    return out
 }
+
 
 @Composable
 fun MayskTheme(s: UiSettings, content: @Composable () -> Unit) {

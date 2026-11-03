@@ -26,6 +26,7 @@ data class AlbumInfo(val name: String, val items: List<MediaItem>) {
 }
 
 enum class ThemePreset(val title: String) {
+    SYSTEM("Как в системе"),           // берёт светлую/тёмную тему телефона
     DEEP_BLUE("Глубокий Синий"),
     ARCTIC("Арктический Свет"),
     VIOLET("Фиолетовое Поле"),
@@ -40,6 +41,7 @@ enum class ThemePreset(val title: String) {
     ORIGINAL("Original"), CLASSIC("Classic"), MODERN("Modern"),
     GLASS("Glass"), LUXURY("Luxury"), NEON("Neon"), MINIMAL("Minimal"), ISTYLE("iStyle")
 }
+
 
 enum class DockStyle(val title: String) {
     HIDDEN("Скрытая"),
@@ -95,8 +97,13 @@ data class UiSettings(
     val covers: List<String> = List(5) { "" },
     /** Акцентный цвет ARGB; 0 = взять из темы. */
     val accent: Int = 0,
+    /** Свой фон главного экрана (uri). Пусто = цвет темы. */
+    val bgImage: String = "",
+    /** Цвет основного текста ARGB; 0 = автоматически из темы. */
+    val textColor: Int = 0,
     /** Матовость стекла 0..1 (светлая дымка на стеклянных панелях). */
     val frost: Float = 0f,
+
     val showDates: Boolean = true,
     val groupByDate: Boolean = true,
     val confirmDelete: Boolean = true,

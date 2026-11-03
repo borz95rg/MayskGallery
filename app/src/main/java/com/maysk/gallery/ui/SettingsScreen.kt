@@ -40,10 +40,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.maysk.gallery.BuildConfig
+
 import com.maysk.gallery.MainViewModel
 import com.maysk.gallery.data.AlbumView
 import com.maysk.gallery.data.AnimStyle
@@ -92,10 +95,12 @@ fun SettingsScreen(vm: MainViewModel, s: UiSettings) {
         SettingsGroup("ТЕМА И ОФОРМЛЕНИЕ", "Новая система оформления Maysk Gallery") {
             SettingsLabel("Готовые темы", "Цвета карточек, фона и текста меняются одновременно")
             val presets = listOf(
+                ThemePreset.SYSTEM,
                 ThemePreset.DEEP_BLUE, ThemePreset.ARCTIC, ThemePreset.VIOLET, ThemePreset.MINT_COAL,
                 ThemePreset.COPPER, ThemePreset.ROYAL_BLUE, ThemePreset.ICE_WIND, ThemePreset.DESERT,
                 ThemePreset.EMERALD, ThemePreset.DARK_MAGIC
             )
+
             presets.chunked(2).forEach { pair ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     pair.forEach { preset ->
@@ -103,6 +108,7 @@ fun SettingsScreen(vm: MainViewModel, s: UiSettings) {
                         Box(
                             Modifier.weight(1f).clip(RoundedCornerShape(16.dp))
                                 .background(when (preset) {
+                                    ThemePreset.SYSTEM -> Color(0xFF3A3A3C)
                                     ThemePreset.ARCTIC -> Color(0xFFF8F9FA)
                                     ThemePreset.ICE_WIND -> Color(0xFFE0F2FE)
                                     ThemePreset.DEEP_BLUE -> Color(0xFF0D1B2A)
@@ -119,10 +125,12 @@ fun SettingsScreen(vm: MainViewModel, s: UiSettings) {
                                 .padding(12.dp),
                             contentAlignment = Alignment.Center
                         ) {
+                            val lightLabel = preset == ThemePreset.ARCTIC || preset == ThemePreset.ICE_WIND
                             Text((if (chosen) "✓ " else "") + preset.title,
-                                color = if (preset == ThemePreset.ARCTIC || preset == ThemePreset.ICE_WIND) Color(0xFF121212) else Color.White,
+                                color = if (lightLabel) Color(0xFF121212) else Color.White,
                                 fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                         }
+
                     }
                     if (pair.size == 1) Spacer(Modifier.weight(1f))
                 }
@@ -144,7 +152,45 @@ fun SettingsScreen(vm: MainViewModel, s: UiSettings) {
                 Slider(value=customHue, onValueChange={customHue=it}, valueRange=0f..360f, modifier=Modifier.weight(1f))
                 TextButton(onClick={vm.set(Keys.ACCENT,Color.hsv(customHue,.78f,.95f).toArgb())}) { Text("Применить") }
             }
+            SettingsLabel("Цвет текста", "Свой цвет заголовков (Авто = из темы)")
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                // 0 = авто
+                Box(
+                    Modifier.size(34.dp).clip(CircleShape)
+                        .background(Brush.linearGradient(listOf(Color(0xFFF0F0F0), Color(0xFF222222))))
+                        .border(if (s.textColor == 0) 3.dp else 1.dp, cs.onSurface, CircleShape)
+                        .clickable { vm.set(Keys.TEXT_COLOR, 0) },
+                    contentAlignment = Alignment.Center
+                ) { Text("A", fontSize = 11.sp, color = Color.White) }
+                listOf(0xFF121212, 0xFFFFFFFF, 0xFFEDEDED, 0xFF5F6368, 0xFF007AFF, 0xFFFFC83D).forEach { c ->
+                    val selected = s.textColor == c
+                    Box(
+                        Modifier.size(34.dp).clip(CircleShape).background(Color(c))
+                            .border(if (selected) 3.dp else 1.dp, cs.onSurface, CircleShape)
+                            .clickable { vm.set(Keys.TEXT_COLOR, c) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (selected) Text("✓", color = if (Color(c).luminance() > 0.5f) Color.Black else Color.White, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+            SettingsLabel("Фон главного экрана", "Любое фото вместо цвета темы")
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (s.bgImage.isNotBlank()) {
+                    AsyncImage(s.bgImage, null, Modifier.size(48.dp).clip(RoundedCornerShape(10.dp)), contentScale = ContentScale.Crop)
+                    TextButton(onClick = { vm.set(Keys.BG_IMAGE, "") }) { Text("Убрать") }
+                } else {
+                    Text("Не задан", fontSize = 13.sp, color = cs.onSurfaceVariant)
+                }
+                TextButton(onClick = {
+                    val fromBanner = s.covers.getOrNull(0).orEmpty()
+                    if (fromBanner.isNotBlank()) vm.set(Keys.BG_IMAGE, fromBanner)
+                }) { Text(if (s.bgImage.isBlank()) "Взять с баннера" else "Обновить с баннера") }
+            }
+            Text("Сначала задайте фото баннера долгим нажатием на главный баннер, затем нажмите «Взять с баннера».", fontSize = 11.sp, color = cs.onSurfaceVariant)
+
             SettingsSlider("Матовость стекла", "${(s.frost*100).toInt()}%", s.frost, 0f..1f) { vm.set(Keys.FROST,it) }
+
             SettingsSlider("Прозрачность панелей", "${(s.glassAlpha*100).toInt()}%", s.glassAlpha, .2f..1f) { vm.set(Keys.GLASS,it) }
             SettingsSlider("Закругление карточек", "${s.cornerPercent}%", s.cornerPercent.toFloat(), 0f..80f) { vm.set(Keys.CORNER,it.roundToInt()) }
             SettingsLabel("Тень карточек")

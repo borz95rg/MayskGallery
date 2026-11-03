@@ -31,8 +31,11 @@ object Keys {
     val AUTO_UPDATE = booleanPreferencesKey("auto_update")
     val FAVORITES = stringSetPreferencesKey("favorites")
     val ACCENT = intPreferencesKey("accent")
+    val BG_IMAGE = stringPreferencesKey("bg_image")
+    val TEXT_COLOR = intPreferencesKey("text_color")
     val FROST = floatPreferencesKey("frost")
     val COVERS = List(5) { stringPreferencesKey("cover$it") }
+
     val SHOW_DATES = booleanPreferencesKey("show_dates")
     val GROUP_BY_DATE = booleanPreferencesKey("group_by_date")
     val CONFIRM_DELETE = booleanPreferencesKey("confirm_delete")
@@ -73,7 +76,10 @@ class SettingsRepository(private val context: Context) {
             favorites = p[Keys.FAVORITES] ?: d.favorites,
             covers = Keys.COVERS.map { p[it] ?: "" },
             accent = p[Keys.ACCENT] ?: d.accent,
+            bgImage = p[Keys.BG_IMAGE] ?: d.bgImage,
+            textColor = p[Keys.TEXT_COLOR] ?: d.textColor,
             frost = (p[Keys.FROST] ?: d.frost).coerceIn(0f, 1f),
+
             showDates = p[Keys.SHOW_DATES] ?: d.showDates,
             groupByDate = p[Keys.GROUP_BY_DATE] ?: d.groupByDate,
             confirmDelete = p[Keys.CONFIRM_DELETE] ?: d.confirmDelete,
@@ -101,9 +107,10 @@ class SettingsRepository(private val context: Context) {
     suspend fun resetLook() {
         context.dataStore.edit { p ->
             listOf(Keys.PRESET, Keys.COLUMNS, Keys.CORNER, Keys.GLASS, Keys.SHADOW, Keys.ANIM,
-                Keys.ALBUM_VIEW, Keys.NAV_TOP, Keys.FONT, Keys.ACCENT, Keys.FROST,
+                Keys.ALBUM_VIEW, Keys.NAV_TOP, Keys.FONT, Keys.ACCENT, Keys.BG_IMAGE, Keys.TEXT_COLOR, Keys.FROST,
                 Keys.DOCK_STYLE, Keys.DOCK_COLOR, Keys.DOCK_LABELS, Keys.DOCK_HEIGHT).forEach { p.remove(it) }
             Keys.COVERS.forEach { p.remove(it) }
+
         }
     }
 

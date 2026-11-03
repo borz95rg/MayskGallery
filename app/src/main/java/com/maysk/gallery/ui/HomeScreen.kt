@@ -136,7 +136,11 @@ fun HomeScreen(
     selfieCountOverride: Int = -1,
 ) {
     val cs = MaterialTheme.colorScheme
+    // Цвет текста: свой или из темы — чтобы на светлых темах ничего не сливалось
+    val fg = if (s.textColor != 0) Color(s.textColor) else cs.onBackground
+    val fgMuted = fg.copy(alpha = 0.65f)
     val photos = remember(items) { items.filter { !it.isVideo } }
+
     val albums = remember(items) {
         items.groupBy { it.bucket }.map { AlbumInfo(it.key, it.value) }.sortedByDescending { it.count }
     }
@@ -166,10 +170,11 @@ fun HomeScreen(
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.Top) {
 
-                    Text("галерея", fontFamily = Serif, fontSize = 46.sp, color = Color.White)
-                    Text("✦", fontSize = 16.sp, color = Color.White, modifier = Modifier.padding(top = 6.dp))
+                    Text("галерея", fontFamily = Serif, fontSize = 46.sp, color = fg)
+                    Text("✦", fontSize = 16.sp, color = fg, modifier = Modifier.padding(top = 6.dp))
                 }
-                Text("твои воспоминания.", fontSize = 12.sp, color = cs.onSurfaceVariant)
+                Text("твои воспоминания.", fontSize = 12.sp, color = fgMuted)
+
             }
             RoundIcon(Icons.Filled.Search) { onTab(2) }
             Spacer(Modifier.size(10.dp))
@@ -215,6 +220,7 @@ fun HomeScreen(
                 )
             }
             Column(Modifier.align(Alignment.CenterEnd).offset(y = 60.dp), horizontalAlignment = Alignment.End) {
+                // Текст на баннере всегда светлый — он поверх фото
                 Text("✦", fontSize = 16.sp, color = Color.White)
                 Text(
                     "фото —\nэто способ\nостановить время,\nне останавливая его.",
@@ -231,10 +237,10 @@ fun HomeScreen(
             Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            QuickCard(Icons.Filled.Star, "избранное", favs.size) { onFilter("избранное", favs) }
-            QuickCard(Icons.Filled.History, "недавние", recent.size) { onFilter("недавние", recent) }
-            QuickCard(Icons.Filled.Place, "места", placesCount) { onTab(13) }
-            QuickCard(Icons.Filled.CameraAlt, "селфи", selfieCount) { onSelfie() }
+            QuickCard(Icons.Filled.Star, "избранное", favs.size, fg, fgMuted) { onFilter("избранное", favs) }
+            QuickCard(Icons.Filled.History, "недавние", recent.size, fg, fgMuted) { onFilter("недавние", recent) }
+            QuickCard(Icons.Filled.Place, "места", placesCount, fg, fgMuted) { onTab(13) }
+            QuickCard(Icons.Filled.CameraAlt, "селфи", selfieCount, fg, fgMuted) { onSelfie() }
         }
 
         // ---- альбомы ----
@@ -242,9 +248,10 @@ fun HomeScreen(
             Modifier.fillMaxWidth().padding(start = 22.dp, end = 22.dp, top = 22.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("альбомы ✦", fontFamily = Serif, fontSize = 26.sp, color = Color.White, modifier = Modifier.weight(1f))
-            Text("все альбомы →", fontSize = 13.sp, color = Color.White, modifier = Modifier.clickable { onTab(1) })
+            Text("альбомы ✦", fontFamily = Serif, fontSize = 26.sp, color = fg, modifier = Modifier.weight(1f))
+            Text("все альбомы →", fontSize = 13.sp, color = fgMuted, modifier = Modifier.clickable { onTab(1) })
         }
+
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -273,9 +280,10 @@ fun HomeScreen(
                     }
                     Text(
                         (a?.name ?: "—") + " •",
-                        fontSize = 12.sp, color = Soft, maxLines = 1,
+                        fontSize = 12.sp, color = fgMuted, maxLines = 1,
                         modifier = Modifier.padding(top = 6.dp, start = 2.dp),
                     )
+
                 }
             }
         }
@@ -283,9 +291,10 @@ fun HomeScreen(
         // ---- воспоминания ----
         if (s.memoriesEnabled) {
         Text(
-            "воспоминания ✦", fontFamily = Serif, fontSize = 26.sp, color = Color.White,
+            "воспоминания ✦", fontFamily = Serif, fontSize = 26.sp, color = fg,
             modifier = Modifier.padding(start = 22.dp, top = 14.dp),
         )
+
         val years = remember(items) {
             items.map { it.date().year }.distinct().sortedDescending().ifEmpty { listOf(LocalDate.now().year) }
         }
@@ -304,9 +313,10 @@ fun HomeScreen(
         ) {
             Box {
                 Text(
-                    "$year ▾", fontSize = 12.sp, color = Color.White,
+                    "$year ▾", fontSize = 12.sp, color = fgMuted,
                     modifier = Modifier.clickable { yearMenu = true }.padding(vertical = 4.dp),
                 )
+
                 DropdownMenu(expanded = yearMenu, onDismissRequest = { yearMenu = false }) {
                     years.forEachIndexed { index, value ->
                         DropdownMenuItem(
@@ -353,7 +363,8 @@ fun HomeScreen(
         }
         if (onThisDay.isNotEmpty()) {
             Text(
-                "в этот день ✦", fontFamily = Serif, fontSize = 26.sp, color = Color.White,
+                "в этот день ✦", fontFamily = Serif, fontSize = 26.sp, color = fg,
+
                 modifier = Modifier.padding(start = 22.dp, top = 22.dp, bottom = 10.dp),
             )
             ThumbRow(onThisDay.take(40), s, onOpen)
@@ -388,28 +399,37 @@ private fun ThumbRow(list: List<MediaItem>, s: UiSettings, onOpen: (List<MediaIt
 
 @Composable
 private fun RoundIcon(icon: ImageVector, onClick: () -> Unit) {
+    val cs = MaterialTheme.colorScheme
+    val border = cs.onBackground.copy(alpha = 0.18f)
     Box(
-        Modifier.size(44.dp).clip(CircleShape).border(1.dp, Color.White.copy(alpha = 0.18f), CircleShape).clickable(onClick = onClick),
+        Modifier.size(44.dp).clip(CircleShape).border(1.dp, border, CircleShape).clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
-    ) { Icon(icon, null, tint = Color.White, modifier = Modifier.size(20.dp)) }
+    ) { Icon(icon, null, tint = cs.onBackground, modifier = Modifier.size(20.dp)) }
 }
 
 @Composable
-private fun androidx.compose.foundation.layout.RowScope.QuickCard(icon: ImageVector, title: String, count: Int, onClick: () -> Unit) {
+private fun androidx.compose.foundation.layout.RowScope.QuickCard(
+    icon: ImageVector, title: String, count: Int,
+    fg: Color, fgMuted: Color, onClick: () -> Unit
+) {
+    val cs = MaterialTheme.colorScheme
+    val cardBg = cs.onBackground.copy(alpha = 0.06f)
+    val cardBorder = cs.onBackground.copy(alpha = 0.12f)
     Column(
         Modifier.weight(1f).clip(RoundedCornerShape(18.dp))
-            .background(Color.White.copy(alpha = 0.06f))
-            .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(18.dp))
+            .background(cardBg)
+            .border(1.dp, cardBorder, RoundedCornerShape(18.dp))
             .clickable(onClick = onClick).padding(vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(Modifier.size(38.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.10f)), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = Color.White, modifier = Modifier.size(18.dp))
+        Box(Modifier.size(38.dp).clip(CircleShape).background(cs.onBackground.copy(alpha = 0.10f)), contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = fg, modifier = Modifier.size(18.dp))
         }
-        Text(title, fontSize = 12.sp, color = Color.White, maxLines = 1, modifier = Modifier.padding(top = 8.dp))
-        Text("$count", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(title, fontSize = 12.sp, color = fg, maxLines = 1, modifier = Modifier.padding(top = 8.dp))
+        Text("$count", fontSize = 12.sp, color = fgMuted)
     }
 }
+
 
 /**
  * Плавающая полупрозрачная нижняя панель.
