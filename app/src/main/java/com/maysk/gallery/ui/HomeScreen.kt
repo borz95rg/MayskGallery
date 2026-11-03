@@ -418,7 +418,7 @@ fun OriginalDock(selected: Int, s: UiSettings, modifier: Modifier = Modifier, on
             Modifier.fillMaxWidth().height(s.dockHeight.coerceIn(60,140).dp)
                 .then(if (s.dockStyle == DockStyle.VOLUMETRIC) Modifier.shadow(16.dp, shape) else Modifier)
                 .clip(shape)
-                .background(if (s.dockStyle == DockStyle.VOLUMETRIC) Brush.verticalGradient(listOf(bg.copy(alpha=.82f), bg, bg.copy(alpha=.92f))) else bg)
+                .then(if (s.dockStyle == DockStyle.VOLUMETRIC) Modifier.background(Brush.verticalGradient(listOf(bg.copy(alpha=.82f), bg, bg.copy(alpha=.92f)))) else Modifier.background(bg))
                 .border(if (s.dockStyle == DockStyle.VOLUMETRIC || s.dockStyle == DockStyle.FLOATING) 1.dp else 0.dp, Color.White.copy(alpha=.16f), shape),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceEvenly,

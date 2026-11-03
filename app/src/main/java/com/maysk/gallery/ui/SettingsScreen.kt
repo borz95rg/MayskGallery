@@ -151,7 +151,7 @@ fun SettingsScreen(vm: MainViewModel, s: UiSettings) {
         }
 
         SettingsGroup("НИЖНЯЯ ПАНЕЛЬ", "Настрой навигацию и сразу смотри результат") {
-            ChipRow(DockStyle.values().toList(), s.dockStyle, { it.title }) { vm.set(Keys.DOCK_STYLE,it) }
+            ChipRow(DockStyle.values().toList(), s.dockStyle, { it.title }) { vm.set(Keys.DOCK_STYLE,it.name) }
             SettingsLabel("Цвет панели", "Выбери оттенок нижней панели")
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement=Arrangement.spacedBy(10.dp)) {
                 listOf(0xFF17171C,0xFF25252B,0xFF263B55,0xFF472A5D,0xFF17483F,0xFF6A3544,0xFF8A5A32,0xFFE8EDF3).forEach { c ->
