@@ -42,8 +42,17 @@ enum class ThemePreset(val title: String) {
 }
 
 enum class DockStyle(val title: String) {
-    HIDDEN("Скрытая"), FLAT("Плоская"), FLOATING("Полукруглая"), VOLUMETRIC("Объёмная")
+    HIDDEN("Скрытая"),
+    FLOATING("Стекло · капсула"),      // оригинал с большой круглой кнопкой
+    PILL("Стекло · пилюля"),           // ровная полупрозрачная полоса
+    UNDERLINE("Подчёркивание"),        // тонкая линия под активным
+    OUTLINE("Обводка"),                // активный в рамке
+    GLOW("Свечение"),                  // активный с glow
+    MINIMAL("Минимализм"),             // только иконки + тонкая линия
+    FLAT("Плоская"),
+    VOLUMETRIC("Объёмная"),
 }
+
 
 enum class AnimStyle(val title: String) {
     NONE("Нет"),

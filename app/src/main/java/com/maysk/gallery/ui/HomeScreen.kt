@@ -409,149 +409,200 @@ private fun androidx.compose.foundation.layout.RowScope.QuickCard(icon: ImageVec
 }
 
 /**
- * Плавающая полупрозрачная (frosted glass) нижняя панель.
- * Контент галереи уходит под неё. Фон панели полупрозрачный — сквозь неё видно альбомы.
- * selected: 0 = фото, 1 = альбомы, 2 = видео.
+ * Плавающая полупрозрачная нижняя панель.
+ * Несколько визуальных стилей (капсула, пилюля, подчёркивание, обводка, свечение…).
+ * Контент галереи уходит под панель. selected: 0=фото, 1=альбомы, 2=видео.
  */
 @Composable
 fun OriginalDock(selected: Int, s: UiSettings, modifier: Modifier = Modifier, onSelect: (Int) -> Unit) {
     if (s.dockStyle == DockStyle.HIDDEN) return
 
     val base = Color(s.dockColor)
-    // Сильная прозрачность, чтобы контент был виден сквозь панель
     val glassAlpha = when (s.dockStyle) {
-        DockStyle.FLAT -> 0.55f
-        DockStyle.VOLUMETRIC -> 0.72f
-        else -> 0.48f // FLOATING — максимально «стеклянный»
+        DockStyle.VOLUMETRIC -> 0.62f
+        DockStyle.FLAT -> 0.42f
+        DockStyle.MINIMAL -> 0.28f
+        else -> 0.36f // очень прозрачное стекло
     }
     val bg = base.copy(alpha = glassAlpha)
     val onDock = if (base.luminance() > 0.5f) Color(0xFF121212) else Color.White
-    val onDockMuted = onDock.copy(alpha = 0.70f)
-    val borderColor = Color.White.copy(alpha = 0.22f)
+    val muted = onDock.copy(alpha = 0.65f)
+    val borderColor = Color.White.copy(alpha = 0.20f)
     val accent = MaterialTheme.colorScheme.primary
+    val style = s.dockStyle
 
-    val barHeight = 62.dp
-    val centerSize = 70.dp
-    val isFlat = s.dockStyle == DockStyle.FLAT
-    val shape = if (isFlat) RoundedCornerShape(0.dp) else RoundedCornerShape(38.dp)
+    val isCapsule = style == DockStyle.FLOATING || style == DockStyle.VOLUMETRIC
+    val barHeight = if (isCapsule) 62.dp else 56.dp
+    val hPad = if (style == DockStyle.FLAT || style == DockStyle.MINIMAL) 0.dp else 16.dp
+    val shape = when (style) {
+        DockStyle.FLAT, DockStyle.MINIMAL -> RoundedCornerShape(0.dp)
+        DockStyle.PILL, DockStyle.UNDERLINE, DockStyle.OUTLINE, DockStyle.GLOW -> RoundedCornerShape(28.dp)
+        else -> RoundedCornerShape(38.dp)
+    }
 
     Box(
         modifier
             .fillMaxWidth()
             .windowInsetsPadding(WindowInsets.navigationBars)
-            .padding(horizontal = if (isFlat) 0.dp else 18.dp, vertical = 8.dp),
+            .padding(horizontal = hPad, vertical = 8.dp),
         contentAlignment = Alignment.BottomCenter
     ) {
-        // Основная капсула — полупрозрачное стекло
+        // Фон панели
         Box(
             Modifier
                 .fillMaxWidth()
                 .height(barHeight)
-                .then(if (s.dockStyle != DockStyle.FLAT) Modifier.shadow(20.dp, shape) else Modifier)
+                .then(if (style != DockStyle.FLAT && style != DockStyle.MINIMAL) Modifier.shadow(18.dp, shape) else Modifier)
                 .clip(shape)
                 .background(bg)
-                // лёгкий «frost» сверху
-                .background(Color.White.copy(alpha = 0.06f + s.frost * 0.12f))
-                .border(1.dp, borderColor, shape)
-        ) {
+                .background(Color.White.copy(alpha = 0.05f + s.frost * 0.10f))
+                .border(if (style == DockStyle.FLAT || style == DockStyle.MINIMAL) 0.dp else 1.dp, borderColor, shape)
+        )
+
+        // Содержимое
+        if (isCapsule) {
+            // Оригинальный стиль: большая круглая кнопка по центру
             Row(
                 Modifier.fillMaxWidth().height(barHeight),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                DockSideItem(
-                    icon = Icons.Filled.Landscape,
-                    label = "фото",
-                    selected = selected == 0,
-                    showLabel = s.dockShowLabels,
-                    onColor = onDock,
-                    muted = onDockMuted,
-                    accent = accent,
-                    onClick = { onSelect(0) },
-                    modifier = Modifier.weight(1f)
-                )
+                DockSimpleItem(Icons.Filled.Landscape, "фото", selected == 0, s.dockShowLabels, onDock, muted, accent, Modifier.weight(1f)) { onSelect(0) }
                 Spacer(Modifier.weight(1f))
-                DockSideItem(
-                    icon = Icons.Outlined.VideoLibrary,
-                    label = "видео",
-                    selected = selected == 2,
-                    showLabel = s.dockShowLabels,
-                    onColor = onDock,
-                    muted = onDockMuted,
-                    accent = accent,
-                    onClick = { onSelect(2) },
-                    modifier = Modifier.weight(1f)
-                )
+                DockSimpleItem(Icons.Outlined.VideoLibrary, "видео", selected == 2, s.dockShowLabels, onDock, muted, accent, Modifier.weight(1f)) { onSelect(2) }
             }
-        }
-
-        // Большая круглая кнопка «альбомы» (glowing center)
-        Box(
-            Modifier
-                .size(centerSize)
-                .offset(y = (-12).dp)
-                .shadow(16.dp, CircleShape)
-                .clip(CircleShape)
-                .background(base.copy(alpha = (glassAlpha + 0.25f).coerceAtMost(0.85f)))
-                .background(Color.White.copy(alpha = 0.08f))
-                .border(1.5.dp, borderColor, CircleShape)
-                .clickable { onSelect(1) },
-            contentAlignment = Alignment.Center
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(
-                    Icons.Filled.AutoAwesome,
-                    contentDescription = null,
-                    tint = if (selected == 1) accent else onDock,
-                    modifier = Modifier.size(26.dp)
-                )
-                if (s.dockShowLabels) {
-                    Text(
-                        "альбомы",
-                        fontSize = 11.sp,
-                        color = if (selected == 1) accent else onDock,
-                        maxLines = 1
-                    )
+            // Центральная круглая кнопка
+            Box(
+                Modifier
+                    .size(70.dp)
+                    .offset(y = (-12).dp)
+                    .shadow(14.dp, CircleShape)
+                    .clip(CircleShape)
+                    .background(base.copy(alpha = (glassAlpha + 0.22f).coerceAtMost(0.78f)))
+                    .background(Color.White.copy(alpha = 0.07f))
+                    .border(1.5.dp, borderColor, CircleShape)
+                    .clickable { onSelect(1) },
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Filled.AutoAwesome, null, tint = if (selected == 1) accent else onDock, modifier = Modifier.size(26.dp))
+                    if (s.dockShowLabels) Text("альбомы", fontSize = 11.sp, color = if (selected == 1) accent else onDock, maxLines = 1)
                 }
+            }
+        } else {
+            // Остальные стили: три равные кнопки
+            Row(
+                Modifier.fillMaxWidth().height(barHeight).padding(horizontal = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                DockStyledItem(Icons.Filled.Landscape, "фото", selected == 0, s.dockShowLabels, style, onDock, muted, accent, Modifier.weight(1f)) { onSelect(0) }
+                DockStyledItem(Icons.Filled.AutoAwesome, "альбомы", selected == 1, s.dockShowLabels, style, onDock, muted, accent, Modifier.weight(1f)) { onSelect(1) }
+                DockStyledItem(Icons.Outlined.VideoLibrary, "видео", selected == 2, s.dockShowLabels, style, onDock, muted, accent, Modifier.weight(1f)) { onSelect(2) }
             }
         }
     }
 }
 
 @Composable
-private fun DockSideItem(
-    icon: ImageVector,
-    label: String,
-    selected: Boolean,
-    showLabel: Boolean,
-    onColor: Color,
-    muted: Color,
-    accent: Color,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+private fun DockSimpleItem(
+    icon: ImageVector, label: String, selected: Boolean, showLabel: Boolean,
+    onColor: Color, muted: Color, accent: Color, modifier: Modifier, onClick: () -> Unit
 ) {
-    Column(
-        modifier
-            .clickable(onClick = onClick)
-            .padding(vertical = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(
-            icon,
-            contentDescription = null,
-            tint = if (selected) accent else muted,
-            modifier = Modifier.size(24.dp)
-        )
-        if (showLabel) {
-            Text(
-                label,
-                fontSize = 11.sp,
-                color = if (selected) accent else muted,
-                maxLines = 1
-            )
+    Column(modifier.clickable(onClick = onClick).padding(vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Icon(icon, null, tint = if (selected) accent else muted, modifier = Modifier.size(24.dp))
+        if (showLabel) Text(label, fontSize = 11.sp, color = if (selected) accent else muted, maxLines = 1)
+    }
+}
+
+@Composable
+private fun DockStyledItem(
+    icon: ImageVector, label: String, selected: Boolean, showLabel: Boolean,
+    style: DockStyle, onColor: Color, muted: Color, accent: Color,
+    modifier: Modifier, onClick: () -> Unit
+) {
+    val content: @Composable () -> Unit = {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(icon, null, tint = if (selected) accent else muted, modifier = Modifier.size(22.dp))
+            if (showLabel) Text(label, fontSize = 11.sp, color = if (selected) accent else muted, maxLines = 1)
+        }
+    }
+
+    when (style) {
+        DockStyle.UNDERLINE -> {
+            Column(
+                modifier.clickable(onClick = onClick).padding(vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                content()
+                Spacer(Modifier.height(4.dp))
+                Box(
+                    Modifier
+                        .height(2.dp)
+                        .fillMaxWidth(0.45f)
+                        .clip(RoundedCornerShape(1.dp))
+                        .background(if (selected) accent else Color.Transparent)
+                )
+            }
+        }
+        DockStyle.OUTLINE -> {
+            Box(
+                modifier
+                    .clickable(onClick = onClick)
+                    .padding(horizontal = 4.dp, vertical = 8.dp)
+                    .then(
+                        if (selected) Modifier
+                            .border(1.5.dp, accent, RoundedCornerShape(16.dp))
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                        else Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) { content() }
+        }
+        DockStyle.GLOW -> {
+            Box(
+                modifier
+                    .clickable(onClick = onClick)
+                    .padding(horizontal = 4.dp, vertical = 6.dp)
+                    .then(
+                        if (selected) Modifier
+                            .shadow(12.dp, RoundedCornerShape(20.dp))
+                            .background(accent.copy(alpha = 0.22f), RoundedCornerShape(20.dp))
+                            .border(1.dp, accent.copy(alpha = 0.55f), RoundedCornerShape(20.dp))
+                            .padding(horizontal = 14.dp, vertical = 8.dp)
+                        else Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) { content() }
+        }
+
+        DockStyle.PILL -> {
+            Box(
+                modifier
+                    .clickable(onClick = onClick)
+                    .padding(horizontal = 4.dp, vertical = 8.dp)
+                    .then(
+                        if (selected) Modifier
+                            .background(Color.White.copy(alpha = 0.92f), RoundedCornerShape(20.dp))
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                        else Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(icon, null, tint = if (selected) Color(0xFF121212) else muted, modifier = Modifier.size(22.dp))
+                    if (showLabel) Text(label, fontSize = 11.sp, color = if (selected) Color(0xFF121212) else muted, maxLines = 1)
+                }
+            }
+        }
+        else -> { // MINIMAL / FLAT
+            Column(modifier.clickable(onClick = onClick).padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                content()
+            }
         }
     }
 }
+
 
 
 
